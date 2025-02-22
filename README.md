@@ -6,7 +6,7 @@ This fork builds on AA's work with the following updates:
 1. Implemented audio
 2. Implemented controls
     - Control mappings for L2, R2, L3, R3, and touchpad (trapezoid button), following the official ps4 remote play maps in `vs0:app/NPXS10013/keymap/`. Note that `Select` + `Start` sends the PS (home) button.
-    - Motion controls (thanks to [@Epicpkmn11](https://github.com/Epicpkmn11))
+    - Motion controls (thanks to [@Epicpkmn11](https://github.com/Epicpkmn11), who also contributed some other controller improvements)
 3. Implemented external network remote play (with manually-specified remote IP addresses)
 4. Fixed console wakeup
 5. Made debug logs visible, added tooltips on some buttons
