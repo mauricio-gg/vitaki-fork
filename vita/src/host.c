@@ -8,6 +8,7 @@
 #include "string.h"
 #include <stdio.h>
 #include <psp2/ctrl.h>
+#include <psp2/motion.h>
 #include <psp2/touch.h>
 #include <chiaki/base64.h>
 #include <chiaki/session.h>
@@ -162,9 +163,11 @@ void set_ctrl_r2pos(VitaChiakiStream *stream, VitakiCtrlIn ctrl_in) {
 }
 
 static void *input_thread_func(void* user) {
+  sceMotionStartSampling();
   sceCtrlSetSamplingMode(SCE_CTRL_MODE_ANALOG_WIDE);
   sceCtrlSetSamplingModeExt(SCE_CTRL_MODE_ANALOG_WIDE);
   SceCtrlData ctrl;
+  SceMotionState motion;
 	VitaChiakiStream *stream = user;
   int ms_per_loop = 5;
 
@@ -211,6 +214,21 @@ static void *input_thread_func(void* user) {
       for(int port = 0; port < SCE_TOUCH_PORT_MAX_NUM; port++) {
         sceTouchPeek(port, &touch[port], 1);
       }
+
+      // get gyro/accel state
+      sceMotionGetState(&motion);
+      stream->controller_state.accel_x = motion.acceleration.x;
+      stream->controller_state.accel_y = motion.acceleration.y;
+      stream->controller_state.accel_z = motion.acceleration.z;
+
+      stream->controller_state.orient_x = motion.deviceQuat.x;
+      stream->controller_state.orient_y = motion.deviceQuat.y;
+      stream->controller_state.orient_z = motion.deviceQuat.z;
+      stream->controller_state.orient_w = motion.deviceQuat.w;
+
+      stream->controller_state.gyro_x = motion.angularVelocity.x;
+      stream->controller_state.gyro_y = motion.angularVelocity.y;
+      stream->controller_state.gyro_z = motion.angularVelocity.z;
 
       // 0-255 conversion
       stream->controller_state.left_x = (ctrl.lx - 128) * 2 * 0x7F/*.FF*/;
