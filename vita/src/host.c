@@ -208,7 +208,7 @@ static void *input_thread_func(void* user) {
       int start_time_us = sceKernelGetProcessTimeWide();
 
       // get button state
-      sceCtrlPeekBufferPositiveExt2(0, &ctrl, 1);
+      sceCtrlPeekBufferPositive(0, &ctrl, 1);
 
       // get touchscreen state
       for(int port = 0; port < SCE_TOUCH_PORT_MAX_NUM; port++) {
@@ -313,14 +313,14 @@ static void *input_thread_func(void* user) {
       if (ctrl.buttons & SCE_CTRL_L3)       stream->controller_state.buttons |= CHIAKI_CONTROLLER_BUTTON_L3;
       if (ctrl.buttons & SCE_CTRL_R3)       stream->controller_state.buttons |= CHIAKI_CONTROLLER_BUTTON_R3;
 
-      if (ctrl.buttons & SCE_CTRL_L1) {
+      if (ctrl.buttons & SCE_CTRL_LTRIGGER) {
         if (reartouch_left && vitaki_reartouch_left_l1_mapped) {
           set_ctrl_l2pos(stream, VITAKI_CTRL_IN_REARTOUCH_LEFT_L1);
         } else {
           set_ctrl_l2pos(stream, VITAKI_CTRL_IN_L1);
         }
       }
-      if (ctrl.buttons & SCE_CTRL_R1) {
+      if (ctrl.buttons & SCE_CTRL_RTRIGGER) {
         if (reartouch_right && vitaki_reartouch_right_r1_mapped) {
           set_ctrl_r2pos(stream, VITAKI_CTRL_IN_REARTOUCH_RIGHT_R1);
         } else {
