@@ -91,10 +91,10 @@ typedef enum ui_screen_type_t {
 } UIScreenType;
 
 // Initialize Yes and No button from settings (will be updated in init_ui)
-int SCE_CTRL_YES = SCE_CTRL_CROSS;
-int SCE_CTRL_NO  = SCE_CTRL_CIRCLE;
-char* yes_btn_str = "Cross";
-char* no_btn_str  = "Circle";
+int SCE_CTRL_CONFIRM = SCE_CTRL_CROSS;
+int SCE_CTRL_CANCEL  = SCE_CTRL_CIRCLE;
+char* confirm_btn_str = "Cross";
+char* cancel_btn_str  = "Circle";
 
 /// Check if a button has been newly pressed
 bool btn_pressed(SceCtrlButtons btn) {
@@ -220,17 +220,17 @@ UIHostAction host_tile(int host_slot, VitaChiakiHost* host) {
   if (is_active) {
     if (at_rest) {
       if (registered) {
-        snprintf(active_tile_tooltip_msg, MAX_TOOLTIP_CHARS, "%s: send wake signal (note: console may be temporarily undetected during wakeup)", yes_btn_str);
+        snprintf(active_tile_tooltip_msg, MAX_TOOLTIP_CHARS, "%s: send wake signal (note: console may be temporarily undetected during wakeup)", confirm_btn_str);
       } else {
         snprintf(active_tile_tooltip_msg, MAX_TOOLTIP_CHARS, "Cannot send wake signal to unregistered console.");
       }
     } else {
       if (discovered && !registered) {
-        snprintf(active_tile_tooltip_msg, MAX_TOOLTIP_CHARS, "%s: begin pairing process", yes_btn_str);
+        snprintf(active_tile_tooltip_msg, MAX_TOOLTIP_CHARS, "%s: begin pairing process", confirm_btn_str);
       } else if (discovered && registered) {
-        snprintf(active_tile_tooltip_msg, MAX_TOOLTIP_CHARS, "%s: start remote play;  Square: re-pair", yes_btn_str);
+        snprintf(active_tile_tooltip_msg, MAX_TOOLTIP_CHARS, "%s: start remote play;  Square: re-pair", confirm_btn_str);
       } else if (added) {
-        snprintf(active_tile_tooltip_msg, MAX_TOOLTIP_CHARS, "%s: send wake signal and/or start remote play (wakeup takes time);  SELECT button: delete host (no confirmation)", yes_btn_str);
+        snprintf(active_tile_tooltip_msg, MAX_TOOLTIP_CHARS, "%s: send wake signal and/or start remote play (wakeup takes time);  SELECT button: delete host (no confirmation)", confirm_btn_str);
       } else {
         // there should never be tiles that are neither discovered nor added
         snprintf(active_tile_tooltip_msg, MAX_TOOLTIP_CHARS, "");
@@ -282,7 +282,7 @@ UIHostAction host_tile(int host_slot, VitaChiakiHost* host) {
       update_context_hosts();
     }
     // Determine action to perform
-    // if (btn_pressed(SCE_CTRL_YES) && !registered) {
+    // if (btn_pressed(SCE_CTRL_CONFIRM) && !registered) {
     //   for (int i = 0; i < context.config.num_registered_hosts; i++) {
     //     printf("0x%x", context.config.registered_hosts[i]->registered_state);
     //     if (context.config.registered_hosts[i] != NULL && strcmp(context.active_host->hostname, context.config.registered_hosts[i]->hostname) == 0) {
@@ -293,7 +293,7 @@ UIHostAction host_tile(int host_slot, VitaChiakiHost* host) {
     //     }
     //   }
     // }
-    // if (btn_pressed(SCE_CTRL_YES) && !registered && !added) {
+    // if (btn_pressed(SCE_CTRL_CONFIRM) && !registered && !added) {
     //   for (int i = 0; i < context.config.num_manual_hosts; i++) {
     //     if (context.config.manual_hosts[i] != NULL && strcmp(context.active_host->hostname, context.config.manual_hosts[i]->hostname) == 0) {
     //       context.active_host->registered_state = context.config.manual_hosts[i]->registered_state;
@@ -304,7 +304,7 @@ UIHostAction host_tile(int host_slot, VitaChiakiHost* host) {
     //     }
     //   }
     // }
-    if (registered && btn_pressed(SCE_CTRL_YES)) {
+    if (registered && btn_pressed(SCE_CTRL_CONFIRM)) {
       if (at_rest) {
         return UI_HOST_ACTION_WAKEUP;
       } else {
@@ -316,7 +316,7 @@ UIHostAction host_tile(int host_slot, VitaChiakiHost* host) {
         int err = host_stream(context.active_host);
         return UI_HOST_ACTION_STREAM;
       }
-    } else if (!registered && !added && discovered && btn_pressed(SCE_CTRL_YES)){
+    } else if (!registered && !added && discovered && btn_pressed(SCE_CTRL_CONFIRM)){
       if (at_rest) {
         LOGD("Cannot wake unregistered console.");
         return UI_HOST_ACTION_NONE;
@@ -374,7 +374,7 @@ bool header_button(MainWidgetId id, int x_offset, vita2d_texture* default_img,
     context.ui_state.next_active_item = id;
     return true;
   }
-  return is_active && btn_pressed(SCE_CTRL_YES);
+  return is_active && btn_pressed(SCE_CTRL_CONFIRM);
 }
 uint16_t IMEInput[SCE_IME_DIALOG_MAX_TEXT_LENGTH + 1];
 bool showingIME = false;
@@ -383,7 +383,7 @@ char* text_input(MainWidgetId id, int x, int y, int w, int h, char* label,
   bool is_active = context.ui_state.active_item == id;
   if (is_active) {
     vita2d_draw_rectangle(x + 300 - 3, y - 3, w + 6, h + 6, COLOR_ACTIVE);
-    if (btn_pressed(SCE_CTRL_YES)) {
+    if (btn_pressed(SCE_CTRL_CONFIRM)) {
       SceImeDialogParam param;
 
       sceImeDialogParamInit(&param);
@@ -450,7 +450,7 @@ long int number_input(MainWidgetId id, int x, int y, int w, int h, char* label, 
   bool is_active = context.ui_state.active_item == id;
   if (is_active) {
     vita2d_draw_rectangle(x + 300 - 3, y - 3, w + 6, h + 6, COLOR_ACTIVE);
-    if (btn_pressed(SCE_CTRL_YES)) {
+    if (btn_pressed(SCE_CTRL_CONFIRM)) {
       SceImeDialogParam param;
 
       sceImeDialogParamInit(&param);
@@ -737,7 +737,7 @@ bool draw_settings() {
     config_serialize(&context.config);
   }
 
-  if (btn_pressed(SCE_CTRL_NO)) {
+  if (btn_pressed(SCE_CTRL_CANCEL)) {
     context.ui_state.next_active_item = UI_MAIN_WIDGET_SETTINGS_BTN;
     // free(context.config.psn_account_id);
     // context.config.psn_account_id = NULL;
@@ -757,7 +757,7 @@ bool draw_registration_dialog() {
   int tooltip_x = 10;
   int tooltip_y = VITA_HEIGHT - font_size;
   vita2d_font_draw_textf(font, tooltip_x, tooltip_y, COLOR_WHITE, font_size,
-                         "Triangle: Register (clear any current registration);  %s: Exit without registering.", no_btn_str
+                         "Triangle: Register (clear any current registration);  %s: Exit without registering.", cancel_btn_str
                         );
 
   // Draw isntructions
@@ -785,7 +785,7 @@ bool draw_registration_dialog() {
       LOGD("User exited registration screen without inputting link code");
     }
   }
-  if (btn_pressed(SCE_CTRL_NO) || btn_pressed(SCE_CTRL_TRIANGLE)) {
+  if (btn_pressed(SCE_CTRL_CANCEL) || btn_pressed(SCE_CTRL_TRIANGLE)) {
     LINK_CODE = -1;
     context.ui_state.next_active_item = UI_MAIN_WIDGET_SETTINGS_BTN;
     return false;
@@ -825,7 +825,7 @@ bool draw_add_host_dialog() {
                           "Pair to a console on a local network first."
                           );
 
-    if (btn_pressed(SCE_CTRL_NO) | btn_pressed(SCE_CTRL_YES)) {
+    if (btn_pressed(SCE_CTRL_CANCEL) | btn_pressed(SCE_CTRL_CONFIRM)) {
       context.ui_state.next_active_item = UI_MAIN_WIDGET_ADD_HOST_BTN;
       REMOTEIP = "";
       CONSOLENUM = -1;
@@ -909,7 +909,7 @@ bool draw_add_host_dialog() {
   int tooltip_x = 10;
   int tooltip_y = VITA_HEIGHT - font_size;
   vita2d_font_draw_textf(font, tooltip_x, tooltip_y, COLOR_WHITE, font_size,
-                         "Triangle: save and add host;  %s: Exit without saving.", no_btn_str
+                         "Triangle: save and add host;  %s: Exit without saving.", cancel_btn_str
                         );
 
   if (btn_pressed(SCE_CTRL_DOWN)) {
@@ -931,7 +931,7 @@ bool draw_add_host_dialog() {
   }
 
   // cancel
-  if (btn_pressed(SCE_CTRL_NO)) {
+  if (btn_pressed(SCE_CTRL_CANCEL)) {
     context.ui_state.next_active_item = UI_MAIN_WIDGET_ADD_HOST_BTN;
     REMOTEIP = "";
     CONSOLENUM = -1;
@@ -1087,7 +1087,7 @@ bool draw_messages() {
     }
   }
 
-  if (btn_pressed(SCE_CTRL_NO)) {
+  if (btn_pressed(SCE_CTRL_CANCEL)) {
     // TODO abort connection if connecting
     vita2d_set_clear_color(RGBA8(0x40, 0x40, 0x40, 0xFF));
     context.ui_state.next_active_item = UI_MAIN_WIDGET_MESSAGES_BTN;
@@ -1105,10 +1105,10 @@ void init_ui() {
   vita2d_set_vblank_wait(true);
 
   // Set yes/no buttons (circle = yes on Japanese vitas, typically)
-  SCE_CTRL_YES = context.config.circle_btn_select ? SCE_CTRL_CIRCLE : SCE_CTRL_CROSS;
-  SCE_CTRL_NO  = context.config.circle_btn_select ? SCE_CTRL_CROSS : SCE_CTRL_CIRCLE;
-  yes_btn_str = context.config.circle_btn_select ? "Circle" : "Cross";
-  no_btn_str  = context.config.circle_btn_select ? "Cross" : "Circle";
+  SCE_CTRL_CONFIRM = context.config.circle_btn_confirm ? SCE_CTRL_CIRCLE : SCE_CTRL_CROSS;
+  SCE_CTRL_CANCEL  = context.config.circle_btn_confirm ? SCE_CTRL_CROSS : SCE_CTRL_CIRCLE;
+  confirm_btn_str = context.config.circle_btn_confirm ? "Circle" : "Cross";
+  cancel_btn_str  = context.config.circle_btn_confirm ? "Cross" : "Circle";
 }
 
 /// Main UI loop

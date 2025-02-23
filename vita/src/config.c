@@ -55,7 +55,7 @@ ChiakiTarget parse_target(char* target_name) {
   return CHIAKI_TARGET_PS4_UNKNOWN;
 }
 
-bool get_circle_btn_select_default() {
+bool get_circle_btn_confirm_default() {
   // Check system settings to see if circle should be select instead of cross
   // (should be true on Japanese vitas and false elsewhere).
 
@@ -79,8 +79,8 @@ void config_parse(VitaChiakiConfig* cfg) {
   cfg->fps = CHIAKI_VIDEO_FPS_PRESET_30;
   cfg->controller_map_id = 0;
 
-  bool circle_btn_select_default = get_circle_btn_select_default();
-  cfg->circle_btn_select = circle_btn_select_default;
+  bool circle_btn_confirm_default = get_circle_btn_confirm_default();
+  cfg->circle_btn_confirm = circle_btn_confirm_default;
 
   if (access(CFG_FILENAME, F_OK) == 0) {
     FILE* fp = fopen(CFG_FILENAME, "r");
@@ -139,8 +139,8 @@ void config_parse(VitaChiakiConfig* cfg) {
         cfg->controller_map_id = datum.u.i;
       }
 
-      datum = toml_bool_in(settings, "circle_btn_select");
-      cfg->circle_btn_select = datum.ok ? datum.u.b : circle_btn_select_default;
+      datum = toml_bool_in(settings, "circle_btn_confirm");
+      cfg->circle_btn_confirm = datum.ok ? datum.u.b : circle_btn_confirm_default;
     }
 
     toml_array_t* regist_hosts = toml_array_in(parsed, "registered_hosts");
@@ -379,8 +379,8 @@ void config_serialize(VitaChiakiConfig* cfg) {
     fprintf(fp, "psn_account_id = \"%s\"\n", cfg->psn_account_id);
   }
   fprintf(fp, "controller_map_id = %d\n", cfg->controller_map_id);
-  fprintf(fp, "circle_btn_select = %s\n",
-          cfg->circle_btn_select ? "true" : "false");
+  fprintf(fp, "circle_btn_confirm = %s\n",
+          cfg->circle_btn_confirm ? "true" : "false");
 
   for (int i = 0; i < cfg->num_manual_hosts; i++) {
     VitaChiakiHost* host = cfg->manual_hosts[i];
