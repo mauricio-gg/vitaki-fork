@@ -7,6 +7,8 @@ assignees: ''
 
 ---
 
+***WARNING:* screenshots and logs are helpful, but PLEASE REMOVE YOUR IP ADDRESS AND CONSOLE NAME/ID FROM THE TEXT OR IMAGE BEFORE UPLOADING!** If you accidentally add such information, delete the issue and create a new one (editing the issue to remove the information is not enough, since GitHub makes all revisions publicly available)
+
 **Describe the bug**
 A clear and concise description of what the bug is.
 
