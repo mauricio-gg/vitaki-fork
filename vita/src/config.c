@@ -46,7 +46,7 @@ ChiakiTarget parse_target(char* target_name) {
   } else if (strcmp("ps4_9", target_name) == 0) {
     return CHIAKI_TARGET_PS4_9;
   } else if (strcmp("ps4_10", target_name) == 0) {
-    return CHIAKI_TARGET_PS4_9;
+    return CHIAKI_TARGET_PS4_10;
   } else if (strcmp("ps5_unknown", target_name) == 0) {
     return CHIAKI_TARGET_PS5_UNKNOWN;
   } else if (strcmp("ps5_1", target_name) == 0) {
@@ -146,6 +146,7 @@ void config_parse(VitaChiakiConfig* cfg) {
         datum = toml_string_in(host_cfg, "target");
         if (datum.ok) {
           rstate->target = parse_target(datum.u.s);
+          host->target = parse_target(datum.u.s);
           free(datum.u.s);
         }
         datum = toml_string_in(host_cfg, "rp_key");
