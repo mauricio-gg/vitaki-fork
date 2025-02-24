@@ -1,8 +1,8 @@
 # Vitaki fork
 
-This is ywnico's fork of [aa's Vitaki](https://git.catvibers.me/aa/chiaki). AA deserves all the credit for the initial port of Chiaki to Vita.
+This is ywnico's fork of AAGaming's ([@AAGaming00](https://github.com/AAGaming00)) [Vitaki](https://git.catvibers.me/aa/chiaki). AAGaming did all the hard work of porting Chiaki to Vita. This fork just adds some features and fixes on top of that foundation.
 
-This fork builds on AA's work with the following updates:
+This fork builds on AAGaming's work with the following updates:
 1. Implemented audio
 2. Implemented controls
     - Control mappings for L2, R2, L3, R3, and touchpad (trapezoid button), following the official ps4 remote play maps in `vs0:app/NPXS10013/keymap/`. Note that `Select` + `Start` sends the PS (home) button.
