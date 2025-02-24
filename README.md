@@ -40,6 +40,11 @@ Currently, Vitaki cannot detect the status of remote hosts. Therefore, when sele
 
 Note: if the remote host cannot be reached, it will get stuck on "Trying to request session" for 90 seconds and then time out. If the remote host was reachable but asleep, "Trying to request session" should fail after just a few seconds.
 
+## Config settings
+Some configuration lacks a UI but can be set in the config file located at `ux0:data/vita-chiaki/chiaki.toml`.
+- `circle_btn_confirm = true` swaps circle and cross in the main UI, so that circle is confirm and cross is cancel (`false` makes cross into confirm and circle into cancel). Note that this does not affect the button mappings in remote play, only in the UI before remote play starts.
+- `auto_discovery = false` makes Vitaki not start discovery on launch. It can still be started manually by selecting the wifi icon.
+
 ## Known issues & troubleshooting
 - [Latency](https://github.com/ywnico/vitaki-fork/issues/12). On remote connections (not local WLAN), it's especially bad.
 - Crashes have been [reported](https://github.com/ywnico/vitaki-fork/issues/6) when multiple consoles are on the network.
