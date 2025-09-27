@@ -46,9 +46,10 @@ Some configuration lacks a UI but can be set in the config file located at `ux0:
 - `auto_discovery = false` makes Vitaki not start discovery on launch. It can still be started manually by selecting the wifi icon.
 
 ## Known issues & troubleshooting
-- [Latency](https://github.com/ywnico/vitaki-fork/issues/12). On remote connections (not local WLAN), it's especially bad.
-- Crashes have been [reported](https://github.com/ywnico/vitaki-fork/issues/6) when multiple consoles are on the network.
-- Typically only one stream works per launch. If the screen becomes gray and unresponsive, restart Vitaki.
+- Latency. On remote connections (not local WLAN), it's especially bad. ([Relevant GitHub issue](https://github.com/ywnico/vitaki-fork/issues/12))
+- Vitaki may crash with error C2-12828-1 if incompatible plugins such as reRescaler are installed. Thanks to [@GuillermoAVeces](https://github.com/GuillermoAVeces) for identifying this. ([Relevant issue](https://github.com/ywnico/vitaki-fork/issues/1)).
+- Typically only one stream works per launch. If the screen becomes gray and unresponsive, restart Vitaki. ([Relevant issue](https://github.com/ywnico/vitaki-fork/issues/16))
+- In the past crashes occurred when multiple consoles are on the network, but this has likely been fixed. ([Relevant issue](https://github.com/ywnico/vitaki-fork/issues/6)).
 
 If problems arise:
 - Try restarting Vitaki first.
