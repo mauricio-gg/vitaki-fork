@@ -2,10 +2,11 @@
 #include <sys/param.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include <vita2d.h>
 #include <psp2/ctrl.h>
 #include <psp2/message_dialog.h>
-#include <psp2/registrymgr.h> 
+#include <psp2/registrymgr.h>
 #include <psp2/ime_dialog.h>
 #include <chiaki/base64.h>
 
@@ -14,12 +15,26 @@
 #include "ui.h"
 #include "util.h"
 
+// Legacy colors (kept for compatibility)
 #define COLOR_WHITE RGBA8(255, 255, 255, 255)
 #define COLOR_GRAY50 RGBA8(129, 129, 129, 255)
 #define COLOR_BLACK RGBA8(0, 0, 0, 255)
 #define COLOR_ACTIVE RGBA8(255, 170, 238, 255)
 #define COLOR_TILE_BG RGBA8(51, 51, 51, 255)
 #define COLOR_BANNER RGBA8(22, 45, 80, 255)
+
+// Modern VitaRPS5 colors (ABGR format for vita2d)
+#define UI_COLOR_PRIMARY_BLUE 0xFFFF9034     // PlayStation Blue #3490FF
+#define UI_COLOR_BACKGROUND 0xFF1A1614       // Animated charcoal gradient base
+#define UI_COLOR_CARD_BG 0xFF37322D          // Dark charcoal (45,50,55)
+#define UI_COLOR_TEXT_PRIMARY 0xFFFFFFFF     // White
+#define UI_COLOR_TEXT_SECONDARY 0xFFB4B4B4   // Light Gray
+#define UI_COLOR_TEXT_TERTIARY 0xFFA0A0A0    // Medium Gray
+#define UI_COLOR_STATUS_AVAILABLE 0xFF50AF4C    // Success Green #4CAF50
+#define UI_COLOR_STATUS_CONNECTING 0xFF0098FF   // Warning Orange #FF9800
+#define UI_COLOR_STATUS_UNAVAILABLE 0xFF3643F4  // Error Red #F44336
+#define UI_COLOR_ACCENT_PURPLE 0xFFB0279C       // Accent Purple #9C27B0
+#define UI_COLOR_SHADOW 0x3C000000           // Semi-transparent black for shadows
 
 #define VITA_WIDTH 960
 #define VITA_HEIGHT 544
@@ -100,6 +115,75 @@ char* cancel_btn_str  = "Circle";
 bool btn_pressed(SceCtrlButtons btn) {
   return (context.ui_state.button_state & btn) &&
          !(context.ui_state.old_button_state & btn);
+}
+
+// Modern rendering helpers (extracted from VitaRPS5)
+
+/// Draw a circle at the given position with the given radius and color
+static void draw_circle(int cx, int cy, int radius, uint32_t color) {
+  // Bounds checking
+  if (cx < -100 || cx > 1060 || cy < -100 || cy > 644 || radius <= 0 || radius > 1000) {
+    return;
+  }
+
+  // Fix problematic color values
+  if (color == 0xFFFFFFFF) {
+    color = RGBA8(254, 254, 254, 255);
+  }
+
+  // Ensure alpha channel is set
+  if ((color & 0xFF000000) == 0) {
+    color |= 0xFF000000;
+  }
+
+  for (int y = -radius; y <= radius; y++) {
+    for (int x = -radius; x <= radius; x++) {
+      if (x * x + y * y <= radius * radius) {
+        int draw_x = cx + x;
+        int draw_y = cy + y;
+
+        if (draw_x < 0 || draw_x >= 960 || draw_y < 0 || draw_y >= 544) {
+          continue;
+        }
+
+        vita2d_draw_rectangle(draw_x, draw_y, 1, 1, color);
+      }
+    }
+  }
+}
+
+/// Draw a rounded rectangle with the given parameters
+static void draw_rounded_rectangle(int x, int y, int width, int height, int radius, uint32_t color) {
+  // Main rectangle body
+  vita2d_draw_rectangle(x + radius, y, width - 2 * radius, height, color);
+  vita2d_draw_rectangle(x, y + radius, width, height - 2 * radius, color);
+
+  // Corner circles (simplified as small rectangles for performance)
+  for (int i = 0; i < radius; i++) {
+    for (int j = 0; j < radius; j++) {
+      if (i * i + j * j <= radius * radius) {
+        // Top-left corner
+        vita2d_draw_rectangle(x + radius - i, y + radius - j, 1, 1, color);
+        // Top-right corner
+        vita2d_draw_rectangle(x + width - radius + i - 1, y + radius - j, 1, 1, color);
+        // Bottom-left corner
+        vita2d_draw_rectangle(x + radius - i, y + height - radius + j - 1, 1, 1, color);
+        // Bottom-right corner
+        vita2d_draw_rectangle(x + width - radius + i - 1, y + height - radius + j - 1, 1, 1, color);
+      }
+    }
+  }
+}
+
+/// Draw a card with a shadow effect
+static void draw_card_with_shadow(int x, int y, int width, int height, int radius, uint32_t color) {
+  // Render shadow first (offset by a few pixels)
+  int shadow_offset = 4;
+  uint32_t shadow_color = UI_COLOR_SHADOW;
+  draw_rounded_rectangle(x + shadow_offset, y + shadow_offset, width, height, radius, shadow_color);
+
+  // Render the actual card on top
+  draw_rounded_rectangle(x, y, width, height, radius, color);
 }
 
 /// Load all textures required for rendering the UI
