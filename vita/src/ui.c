@@ -239,11 +239,12 @@ UIHostAction host_tile(int host_slot, VitaChiakiHost* host) {
   if (host_slot > 1) {
     y += HOST_SLOT_H + 11;
   }
+  // Draw card with shadow for modern look
   if (is_active) {
-    vita2d_draw_rectangle(x - 3, y - 3, HOST_SLOT_W + 6, HOST_SLOT_H + 6,
-                          COLOR_ACTIVE);
+    // Active selection border with glow effect
+    draw_rounded_rectangle(x - 3, y - 3, HOST_SLOT_W + 6, HOST_SLOT_H + 6, 8, UI_COLOR_PRIMARY_BLUE);
   }
-  vita2d_draw_rectangle(x, y, HOST_SLOT_W, HOST_SLOT_H, COLOR_TILE_BG);
+  draw_card_with_shadow(x, y, HOST_SLOT_W, HOST_SLOT_H, 8, UI_COLOR_CARD_BG);
 
   // Draw host name (nickname) and host id (mac)
   if (discovered) {
