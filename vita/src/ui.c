@@ -616,15 +616,14 @@ void load_psn_id_if_needed() {
 /// Draw the header bar for the main menu screen
 /// @return the screen to draw during the next cycle
 UIScreenType draw_header_bar() {
-  // Header background
-  // FIXME: What's the performance impact of this? Should we define this as
-  // constants?
+  // Modern header with rounded corners and shadow
   int w = vita2d_texture_get_width(img_header);
   int h = vita2d_texture_get_height(img_header);
   vita2d_draw_texture(img_header, HEADER_BAR_X - w,
                       HEADER_BAR_Y - (h - HEADER_BAR_H) / 2);
-  vita2d_draw_rectangle(HEADER_BAR_X, HEADER_BAR_Y, HEADER_BAR_W, HEADER_BAR_H,
-                        COLOR_BANNER);
+
+  // Draw header bar with modern styling
+  draw_card_with_shadow(HEADER_BAR_X, HEADER_BAR_Y, HEADER_BAR_W, HEADER_BAR_H, 6, UI_COLOR_CARD_BG);
 
   // Header buttons
   UIScreenType next_screen = UI_SCREEN_TYPE_MAIN;
@@ -836,25 +835,36 @@ char* LINK_CODE_LABEL = "Registration code";
 
 /// Draw the form to register a host
 /// @return whether the dialog should keep rendering
-bool draw_registration_dialog() { 
-  // Draw instructions
+bool draw_registration_dialog() {
+  // Modern registration card
+  int card_x = 80;
+  int card_y = 80;
+  int card_w = 800;
+  int card_h = 380;
+  draw_card_with_shadow(card_x, card_y, card_w, card_h, 12, UI_COLOR_CARD_BG);
+
+  // Title
+  vita2d_font_draw_text(font, card_x + 30, card_y + 50, UI_COLOR_TEXT_PRIMARY, 28,
+                        "Register Console");
+
+  // Draw instructions with modern styling
+  int info_font_size = 20;
+  int info_x = card_x + 30;
+  int info_y = card_y + 120;
+  int info_y_delta = 28;
+  vita2d_font_draw_text(font, info_x, info_y, UI_COLOR_TEXT_SECONDARY, info_font_size,
+                        "On your PS console, go to Settings > System > Remote Play and select Pair Device,"
+                        );
+  vita2d_font_draw_text(font, info_x, info_y + info_y_delta, UI_COLOR_TEXT_SECONDARY, info_font_size,
+                        "then enter the corresponding 8-digit code here (no spaces)."
+                        );
+
+  // Instructions at bottom
   int font_size = 18;
   int tooltip_x = 10;
   int tooltip_y = VITA_HEIGHT - font_size;
-  vita2d_font_draw_textf(font, tooltip_x, tooltip_y, COLOR_WHITE, font_size,
+  vita2d_font_draw_textf(font, tooltip_x, tooltip_y, UI_COLOR_TEXT_TERTIARY, font_size,
                          "Triangle: Register (clear any current registration);  %s: Exit without registering.", cancel_btn_str
-                        );
-
-  // Draw isntructions
-  int info_font_size = 20;
-  int info_x = 30;
-  int info_y = 150;
-  int info_y_delta = 23;
-  vita2d_font_draw_text(font, info_x, info_y, COLOR_WHITE, info_font_size,
-                        "On your PS console, go to Settings > System > Remote Play and select Pair Device,"
-                        );
-  vita2d_font_draw_text(font, info_x, info_y + info_y_delta, COLOR_WHITE, info_font_size,
-                        "then enter the corresponding 8-digit code here (no spaces)."
                         );
 
   long int link_code = number_input(UI_MAIN_WIDGET_TEXT_INPUT | 0, 30, 30, 600, 80, LINK_CODE_LABEL, LINK_CODE);
@@ -1250,6 +1260,8 @@ void draw_ui() {
       if (!context.stream.is_streaming) {
         vita2d_start_drawing();
         vita2d_clear_screen();
+        // Draw modern charcoal background
+        vita2d_draw_rectangle(0, 0, VITA_WIDTH, VITA_HEIGHT, UI_COLOR_BACKGROUND);
 
         // Render the current screen
         if (screen == UI_SCREEN_TYPE_MAIN) {
