@@ -736,73 +736,62 @@ char* CONTROLLER_MAP_ID_LABEL = "Controller map";
 /// Draw the settings form
 /// @return whether the dialog should keep rendering
 bool draw_settings() {
+  // Modern settings card
+  int card_x = 40;
+  int card_y = 40;
+  int card_w = 880;
+  int card_h = 460;
+  draw_card_with_shadow(card_x, card_y, card_w, card_h, 12, UI_COLOR_CARD_BG);
+
+  // Title
+  vita2d_font_draw_text(font, card_x + 30, card_y + 45, UI_COLOR_TEXT_PRIMARY, 26,
+                        "Settings");
+
   int font_size = 18;
 
-  char* psntext = text_input(UI_MAIN_WIDGET_TEXT_INPUT | 1, 30, 30, 600, 80, PSNID_LABEL, context.config.psn_account_id, 20);
+  char* psntext = text_input(UI_MAIN_WIDGET_TEXT_INPUT | 1, card_x + 30, card_y + 80, 600, 70, PSNID_LABEL, context.config.psn_account_id, 20);
   if (psntext != NULL) {
-    // LOGD("psntext is %s", psntext);
     free(context.config.psn_account_id);
     context.config.psn_account_id = psntext;
     load_psn_id_if_needed();
     config_serialize(&context.config);
   }
-  vita2d_font_draw_text(font, 30, 106, COLOR_WHITE, font_size,
-                        "Press start to reset"
+  vita2d_font_draw_text(font, card_x + 650, card_y + 100, UI_COLOR_TEXT_TERTIARY, 16,
+                        "Press Start to reset"
                         );
-  vita2d_font_draw_text(font, 30, 127, COLOR_WHITE, font_size,
+  vita2d_font_draw_text(font, card_x + 650, card_y + 118, UI_COLOR_TEXT_TERTIARY, 16,
                         "from device account"
                         );
 
-  int ctrlmap_id = number_input(UI_MAIN_WIDGET_TEXT_INPUT | 2, 30, 140, 600, 80, CONTROLLER_MAP_ID_LABEL, context.config.controller_map_id);
+  int ctrlmap_id = number_input(UI_MAIN_WIDGET_TEXT_INPUT | 2, card_x + 30, card_y + 165, 600, 70, CONTROLLER_MAP_ID_LABEL, context.config.controller_map_id);
   if (ctrlmap_id != -1) {
-    // LOGD("ctrlmap_id is %d", ctrlmap_id);
     context.config.controller_map_id = ctrlmap_id;
     config_serialize(&context.config);
   }
 
-  // Draw controller text notes
-  int info_x = 30;
-  int info_y = 250;
-  int info_y_delta = 21;
+  // Controller map info in condensed format
+  int info_x = card_x + 30;
+  int info_y = card_y + 260;
+  int info_y_delta = 18;
+  int help_size = 15;
 
-  vita2d_font_draw_text(font, info_x, info_y, COLOR_WHITE, font_size,
-                        "Controller map values: 0,1,2,3,4,5,6,7,25: official remote play maps (see vs0:app/NPXS10013/keymap/)"
+  vita2d_font_draw_text(font, info_x, info_y, UI_COLOR_TEXT_SECONDARY, help_size,
+                        "Controller Maps: 0-7,25,99 (official remote play layouts)"
                         );
-  vita2d_font_draw_text(font, info_x, info_y + 1*info_y_delta, COLOR_WHITE, font_size,
-                        "0: L2, R2 rear upper quarters; L3, R3 rear lower quarters; touchpad entire front"
+  vita2d_font_draw_text(font, info_x, info_y + 1*info_y_delta, UI_COLOR_TEXT_TERTIARY, help_size,
+                        "0: L2/R2 rear upper, L3/R3 rear lower  |  1: L2/R2 front upper, L3/R3 front lower"
                         );
-  vita2d_font_draw_text(font, info_x, info_y + 2*info_y_delta, COLOR_WHITE, font_size,
-                        "1: L2, R2 front upper corners; L3, R3 front lower corners; touchpad front center"
+  vita2d_font_draw_text(font, info_x, info_y + 2*info_y_delta, UI_COLOR_TEXT_TERTIARY, help_size,
+                        "2-3: Various combinations  |  4-5: Reduced button layouts"
                         );
-  vita2d_font_draw_text(font, info_x, info_y + 3*info_y_delta, COLOR_WHITE, font_size,
-                        "2: L2, R2 front lower corners; L3, R3 rear left/right half; touchpad front center"
+  vita2d_font_draw_text(font, info_x, info_y + 3*info_y_delta, UI_COLOR_TEXT_TERTIARY, help_size,
+                        "6-7: Front corners only  |  25: No touchpad  |  99: Custom vitaki layout"
                         );
-  vita2d_font_draw_text(font, info_x, info_y + 4*info_y_delta, COLOR_WHITE, font_size,
-                        "3: L2, R2 front upper corners; L3, R3 rear left/right half; touchpad front center"
-                        );
-  vita2d_font_draw_text(font, info_x, info_y + 5*info_y_delta, COLOR_WHITE, font_size,
-                        "4: No L2, R2, L3, R3; touchpad entire front"
-                        );
-  vita2d_font_draw_text(font, info_x, info_y + 6*info_y_delta, COLOR_WHITE, font_size,
-                        "5: No L2, R2, L3, R3, or touchpad"
-                        );
-  vita2d_font_draw_text(font, info_x, info_y + 7*info_y_delta, COLOR_WHITE, font_size,
-                        "6: L2, R2 front lower corners; no L3, R3; touchpad front center"
-                        );
-  vita2d_font_draw_text(font, info_x, info_y + 8*info_y_delta, COLOR_WHITE, font_size,
-                        "7: L2, R2 front upper corners; no L3, R3; touchpad front center"
-                        );
-  vita2d_font_draw_text(font, info_x, info_y + 9*info_y_delta, COLOR_WHITE, font_size,
-                        "25: L2, R2 front upper corners; L3, R3 front lower corners; no touchpad"
-                        );
-  vita2d_font_draw_text(font, info_x, info_y + 10*info_y_delta, COLOR_WHITE, font_size,
-                        "99: L2, R2 = L1 + rear, R1 + rear; L3 = Left+Square, R3 = Right+Circle; touchpad entire front"
-                        );
-  vita2d_font_draw_text(font, info_x, info_y + 11*info_y_delta + info_y_delta/2, COLOR_WHITE, font_size,
+  vita2d_font_draw_text(font, info_x, info_y + 4*info_y_delta, UI_COLOR_TEXT_TERTIARY, help_size,
                         "Add 100 to swap L2<->L3 and R2<->R3"
                         );
-  vita2d_font_draw_text(font, info_x, info_y + 13*info_y_delta, COLOR_WHITE, font_size,
-                        "In all maps, press Start + Select simultaneously for PS (home) button"
+  vita2d_font_draw_text(font, info_x, info_y + 6*info_y_delta, UI_COLOR_PRIMARY_BLUE, help_size,
+                        "Tip: Start + Select = PS button in all maps"
                         );
 
   if (btn_pressed(SCE_CTRL_DOWN)) {
@@ -821,10 +810,12 @@ bool draw_settings() {
     config_serialize(&context.config);
   }
 
+  // Bottom tooltip
+  vita2d_font_draw_textf(font, 10, VITA_HEIGHT - 18, UI_COLOR_TEXT_TERTIARY, 16,
+                         "%s: Back to main menu", cancel_btn_str);
+
   if (btn_pressed(SCE_CTRL_CANCEL)) {
     context.ui_state.next_active_item = UI_MAIN_WIDGET_SETTINGS_BTN;
-    // free(context.config.psn_account_id);
-    // context.config.psn_account_id = NULL;
     return false;
   }
   return true;
