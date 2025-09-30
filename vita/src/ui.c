@@ -112,10 +112,21 @@ vita2d_texture *symbol_triangle, *symbol_circle, *symbol_ex, *symbol_square;
 vita2d_texture *wave_top, *wave_bottom;
 vita2d_texture *ellipse_green, *ellipse_yellow, *ellipse_red;
 vita2d_texture *button_add_new, *console_card_bg;
+vita2d_texture *icon_play, *icon_settings, *icon_controller, *icon_profile;
 
 // Particle system state
 static Particle particles[PARTICLE_COUNT];
 static bool particles_initialized = false;
+
+// Wave navigation state
+#define WAVE_NAV_WIDTH 130
+#define WAVE_NAV_ICON_SIZE 48
+#define WAVE_NAV_ICON_X 41
+#define WAVE_NAV_ICON_START_Y 180
+#define WAVE_NAV_ICON_SPACING 60
+
+static int selected_nav_icon = 0;  // 0=Play, 1=Settings, 2=Controller, 3=Profile
+static float wave_animation_time = 0.0f;
 
 #define MAX_TOOLTIP_CHARS 200
 char active_tile_tooltip_msg[MAX_TOOLTIP_CHARS] = {0};
@@ -301,6 +312,47 @@ void render_particles() {
   }
 }
 
+/// Render VitaRPS5 wave navigation sidebar
+void render_wave_navigation() {
+  // Draw wave background textures
+  if (wave_top) {
+    vita2d_draw_texture(wave_top, 0, 0);
+  }
+  if (wave_bottom) {
+    vita2d_draw_texture(wave_bottom, 0, VITA_HEIGHT - vita2d_texture_get_height(wave_bottom));
+  }
+
+  // Navigation icons array
+  vita2d_texture* nav_icons[4] = {
+    icon_play, icon_settings, icon_controller, icon_profile
+  };
+
+  // Draw navigation icons with wave animation
+  wave_animation_time += 0.05f;  // Update animation
+
+  for (int i = 0; i < 4; i++) {
+    if (!nav_icons[i]) continue;
+
+    int y = WAVE_NAV_ICON_START_Y + (i * WAVE_NAV_ICON_SPACING);
+    float wave_offset = sinf(wave_animation_time + i * 0.5f) * 3.0f;
+
+    // Selection highlight (PlayStation Blue circle)
+    if (i == selected_nav_icon) {
+      draw_circle(WAVE_NAV_ICON_X, y + wave_offset, 28, UI_COLOR_PRIMARY_BLUE);
+    }
+
+    // Draw icon (centered at WAVE_NAV_ICON_X, y + wave_offset)
+    int icon_w = vita2d_texture_get_width(nav_icons[i]);
+    int icon_h = vita2d_texture_get_height(nav_icons[i]);
+    float scale = (float)WAVE_NAV_ICON_SIZE / (float)(icon_w > icon_h ? icon_w : icon_h);
+
+    vita2d_draw_texture_scale(nav_icons[i],
+      WAVE_NAV_ICON_X - (icon_w * scale / 2.0f),
+      y + wave_offset - (icon_h * scale / 2.0f),
+      scale, scale);
+  }
+}
+
 /// Load all textures required for rendering the UI
 void load_textures() {
   btn_add = vita2d_load_PNG_file(BTN_ADD_PATH);
@@ -337,6 +389,12 @@ void load_textures() {
   ellipse_red = vita2d_load_PNG_file("app0:/assets/vitarps5/ellipse_red.png");
   button_add_new = vita2d_load_PNG_file("app0:/assets/vitarps5/button_add_new.png");
   console_card_bg = vita2d_load_PNG_file("app0:/assets/vitarps5/console_card.png");
+
+  // Load navigation icons
+  icon_play = vita2d_load_PNG_file("app0:/assets/vitarps5/icon_play.png");
+  icon_settings = vita2d_load_PNG_file("app0:/assets/vitarps5/icon_settings.png");
+  icon_controller = vita2d_load_PNG_file("app0:/assets/vitarps5/icon_controller.png");
+  icon_profile = vita2d_load_PNG_file("app0:/assets/vitarps5/icon_profile.png");
 }
 
 /// Check if a given region is touched on the front touch screen
@@ -793,7 +851,32 @@ UIScreenType draw_main_menu() {
   update_particles();
   render_particles();
 
-  UIScreenType next_screen = draw_header_bar();
+  // Render VitaRPS5 wave navigation sidebar
+  render_wave_navigation();
+
+  // Handle wave navigation input (L1/R1 to cycle through nav items)
+  if (btn_pressed(SCE_CTRL_LTRIGGER)) {
+    selected_nav_icon = (selected_nav_icon - 1 + 4) % 4;
+  } else if (btn_pressed(SCE_CTRL_RTRIGGER)) {
+    selected_nav_icon = (selected_nav_icon + 1) % 4;
+  }
+
+  // Handle navigation selection with Triangle
+  UIScreenType next_screen = UI_SCREEN_TYPE_MAIN;
+  if (btn_pressed(SCE_CTRL_TRIANGLE)) {
+    switch (selected_nav_icon) {
+      case 0: next_screen = UI_SCREEN_TYPE_MAIN; break;       // Play
+      case 1: next_screen = UI_SCREEN_TYPE_SETTINGS; break;   // Settings
+      case 2: next_screen = UI_SCREEN_TYPE_REGISTER_HOST; break;  // Controller (placeholder)
+      case 3: next_screen = UI_SCREEN_TYPE_REGISTER_HOST; break;  // Profile (placeholder)
+    }
+  }
+
+  if (next_screen != UI_SCREEN_TYPE_MAIN) {
+    return next_screen;
+  }
+
+  next_screen = draw_header_bar();
 
   int host_slots = 0;
   UIHostAction host_action = UI_HOST_ACTION_NONE;

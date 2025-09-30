@@ -128,5 +128,10 @@ if(CHIAKI_IS_VITA)
         FILE res/assets/vitarps5/user_provided/modern_assets/ellipse_red.png assets/vitarps5/ellipse_red.png
         FILE res/assets/vitarps5/user_provided/modern_assets/button_add_new.png assets/vitarps5/button_add_new.png
         FILE res/assets/vitarps5/user_provided/modern_assets/console_card.png assets/vitarps5/console_card.png
+        # Navigation Icons
+        FILE res/assets/vitarps5/user_provided/icons/settings_white.png assets/vitarps5/icon_settings.png
+        FILE res/assets/vitarps5/user_provided/icons/PS5_Controller_White.png assets/vitarps5/icon_controller.png
+        FILE res/assets/vitarps5/user_provided/icons/profile.png assets/vitarps5/icon_profile.png
+        FILE res/assets/ps5.png assets/vitarps5/icon_play.png
     )
 endif()
