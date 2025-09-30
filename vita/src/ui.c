@@ -39,6 +39,15 @@
 #define VITA_WIDTH 960
 #define VITA_HEIGHT 544
 
+// VitaRPS5 UI Layout Constants
+#define WAVE_NAV_WIDTH 130
+#define CONTENT_AREA_X WAVE_NAV_WIDTH
+#define CONTENT_AREA_WIDTH (VITA_WIDTH - WAVE_NAV_WIDTH)
+#define CONSOLE_CARD_WIDTH 400
+#define CONSOLE_CARD_HEIGHT 200
+#define PARTICLE_COUNT 12
+
+// Legacy layout (will be phased out)
 #define HEADER_BAR_X 136
 #define HEADER_BAR_Y 43
 #define HEADER_BAR_H 26
@@ -47,6 +56,18 @@
 #define HOST_SLOTS_Y HEADER_BAR_Y + HEADER_BAR_H + 43
 #define HOST_SLOT_W 400
 #define HOST_SLOT_H 190
+
+// Particle structure for background animation
+typedef struct {
+  float x, y;
+  float vx, vy;
+  float scale;
+  float rotation;
+  float rotation_speed;
+  int symbol_type;  // 0=triangle, 1=circle, 2=x, 3=square
+  uint32_t color;
+  bool active;
+} Particle;
 
 #define TEXTURE_PATH "app0:/assets/"
 #define BTN_REGISTER_PATH TEXTURE_PATH "btn_register.png"

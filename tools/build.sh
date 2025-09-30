@@ -12,7 +12,7 @@ SOURCE_DIR="./vita/src"
 
 # Version configuration
 VERSION_PHASE="0.1"
-VERSION_ITERATION="54"
+VERSION_ITERATION="55"
 
 # Colors for output
 RED='\033[0;31m'
