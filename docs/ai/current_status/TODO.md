@@ -18,26 +18,33 @@ We discovered that VitaRPS5 UI is tightly coupled to VitaRPS5 backend. We're now
 - [x] Update CMakeLists.txt structure
 - [x] Document architecture challenge
 
-### Phase 2: Dependency Analysis & Stub Creation 🔄
-- [ ] **Document VitaRPS5 UI → Backend dependencies**
-  - Map all includes from UI files
-  - Identify which functions UI calls
-  - Document expected data structures
+### Phase 2: Copy ALL VitaRPS5 Modules ✅
+- [x] Copy audio/ module (1 file)
+- [x] Copy system/ module (1 file)
+- [x] Copy discovery/ module (2 files)
+- [x] Copy network/ module (8 files)
+- [x] Copy console/ bridge (1 file)
+- [x] Copy chiaki/ integration (27 files)
+- [x] Update CMakeLists.txt with all 90+ files
 
-- [ ] **Create stub headers** for missing VitaRPS5 modules:
-  - `audio/audio_decoder.h` - Audio system interface
-  - `system/vita_system_info.h` - System info queries
-  - `discovery/ps5_discovery.h` - Console discovery interface
-  - `chiaki/chiaki_base64_vitaki.h` - Base64 utilities
+**Note:** We've essentially imported the ENTIRE VitaRPS5 codebase. This is now a full merge, not just UI replacement.
 
-### Phase 3: Copy Remaining VitaRPS5 Modules
-- [ ] Copy audio/ module files
-- [ ] Copy system/ module files
-- [ ] Copy discovery/ module files
-- [ ] Copy chiaki/ integration files
-- [ ] Update CMakeLists.txt with new modules
+### Phase 3: Resolve Compilation Conflicts 🔄
+Now we have BOTH codebases in the same project:
+- vitaki-fork backend: config.c, context.c, discovery.c, host.c, video.c, etc.
+- VitaRPS5 full stack: UI + backend
 
-### Phase 4: Bridge Implementation
+**Current Issues:**
+- Name conflicts (e.g., both have discovery.c)
+- Duplicate functionality
+- Need to decide which backend to keep
+
+**Options:**
+1. **Keep both, create API layer** - Rename conflicts, use VitaRPS5 UI → VitaRPS5 backend, ignore vitaki backend
+2. **Remove vitaki backend** - Delete old vitaki files, use pure VitaRPS5
+3. **Remove VitaRPS5 backend** - Create stub layer, VitaRPS5 UI → vitaki backend (original goal)
+
+### Phase 4: Bridge Implementation (if keeping both)
 - [ ] **Discovery Bridge**
   - Map VitaRPS5 `ps5_discovery_*` → vitaki-fork `start_discovery/stop_discovery`
   - Convert between VitaRPS5 and vitaki-fork host structures
