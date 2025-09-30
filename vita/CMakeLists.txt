@@ -6,7 +6,6 @@ set(VITA_TITLEID  "CHIAKI001")
 set(VITA_VERSION "00.06")
 
 add_executable(${VITA_APP_NAME}.elf
-    # Vitaki-fork backend (unchanged)
     src/config.c
     src/context.c
     src/discovery.c
@@ -19,91 +18,6 @@ add_executable(${VITA_APP_NAME}.elf
     src/audio.c
     src/message_log.c
 
-    # VitaRPS5 Core modules
-    src/core/console_registration.c
-    src/core/console_storage.c
-    src/core/profile_storage.c
-    src/core/registration_cache.c
-    src/core/session_manager.c
-    src/core/settings.c
-    src/core/vitarps5.c
-
-    # VitaRPS5 Utils
-    src/utils/diagnostics.c
-    src/utils/error_strings.c
-    src/utils/helpers.c
-    src/utils/http_client.c
-    src/utils/json_parser.c
-    src/utils/logger.c
-    src/utils/protocol_retry.c
-
-    # VitaRPS5 Audio
-    src/audio/audio_decoder.c
-
-    # VitaRPS5 System
-    src/system/vita_system_info.c
-
-    # VitaRPS5 Discovery
-    src/discovery/discovery.c
-    src/discovery/ps5_discovery.c
-
-    # VitaRPS5 Network
-    src/network/connect_local.c
-    src/network/control_plane.c
-    src/network/network_manager.c
-    src/network/network_stubs.c
-    src/network/session_init.c
-    src/network/session_keepalive.c
-    src/network/takion.c
-    src/network/wake.c
-
-    # VitaRPS5 Console Bridge
-    src/console/vitaki_bridge.c
-
-    # VitaRPS5 Chiaki Integration
-    src/chiaki/chiaki_base64_vitaki.c
-    src/chiaki/chiaki_common.c
-    src/chiaki/chiaki_controller.c
-    src/chiaki/chiaki_ctrl_impl.c
-    src/chiaki/chiaki_ecdh_vitaki.c
-    src/chiaki/chiaki_gkcrypt_vitaki.c
-    src/chiaki/chiaki_http_vitaki.c
-    src/chiaki/chiaki_integration.c
-    src/chiaki/chiaki_launchspec.c
-    src/chiaki/chiaki_log.c
-    src/chiaki/chiaki_missing_functions.c
-    src/chiaki/chiaki_random.c
-    src/chiaki/chiaki_receivers.c
-    src/chiaki/chiaki_regist_vitaki.c
-    src/chiaki/chiaki_rpcrypt_vitaki.c
-    src/chiaki/chiaki_rudp.c
-    src/chiaki/chiaki_session.c
-    src/chiaki/chiaki_sock.c
-    src/chiaki/chiaki_streamconnection_vitaki.c
-    src/chiaki/chiaki_streamconnection.c
-    src/chiaki/chiaki_target_utils.c
-    src/chiaki/chiaki_thread_vita.c
-    src/chiaki/chiaki_threading.c
-    src/chiaki/pb_utils.c
-    src/chiaki/vitaki_stoppipe.c
-    src/chiaki/vitaki_thread.c
-    src/chiaki/vitaki_time.c
-
-    # VitaRPS5 UI modules
-    src/ui/console_state_thread.c
-    src/ui/ui_components.c
-    src/ui/ui_controller.c
-    src/ui/ui_core.c
-    src/ui/ui_dashboard.c
-    src/ui/ui_navigation.c
-    src/ui/ui_profile.c
-    src/ui/ui_psn_login.c
-    src/ui/ui_registration.c
-    src/ui/ui_settings.c
-    src/ui/ui_streaming.c
-    src/ui/vita2d_ui.c
-
-    # Third party
     third_party/tomlc99/toml.c
     third_party/h264-bitstream/h264_nal.c
 	third_party/h264-bitstream/h264_sei.c
@@ -117,7 +31,6 @@ target_compile_definitions(${VITA_APP_NAME}.elf PUBLIC
 
 target_include_directories(${VITA_APP_NAME}.elf PRIVATE
     include
-    src
     third_party
     third_party/h264-bitstream/
 )
