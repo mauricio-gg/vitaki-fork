@@ -128,6 +128,24 @@ static bool particles_initialized = false;
 static int selected_nav_icon = 0;  // 0=Play, 1=Settings, 2=Controller, 3=Profile
 static float wave_animation_time = 0.0f;
 
+// Console card system
+#define CONSOLE_CARD_WIDTH 400
+#define CONSOLE_CARD_HEIGHT 200
+#define CONSOLE_CARD_SPACING 120
+#define CONSOLE_CARD_START_Y 150
+
+typedef struct {
+  char name[32];           // "PS5 - 024"
+  char ip_address[16];     // "192.168.1.100"
+  int status;              // 0=Available, 1=Unavailable, 2=Connecting
+  int state;               // 0=Unknown, 1=Ready, 2=Standby
+  bool is_registered;      // Has valid credentials
+  bool is_discovered;      // From network discovery
+  VitaChiakiHost* host;    // Original vitaki host reference
+} ConsoleCardInfo;
+
+static int selected_console_index = 0;
+
 #define MAX_TOOLTIP_CHARS 200
 char active_tile_tooltip_msg[MAX_TOOLTIP_CHARS] = {0};
 
@@ -350,6 +368,152 @@ void render_wave_navigation() {
       WAVE_NAV_ICON_X - (icon_w * scale / 2.0f),
       y + wave_offset - (icon_h * scale / 2.0f),
       scale, scale);
+  }
+}
+
+/// Map VitaChiakiHost to ConsoleCardInfo
+void map_host_to_console_card(VitaChiakiHost* host, ConsoleCardInfo* card) {
+  if (!host || !card) return;
+
+  bool discovered = (host->type & DISCOVERED) && (host->discovery_state);
+  bool registered = host->type & REGISTERED;
+  bool at_rest = discovered && host->discovery_state &&
+                 host->discovery_state->state == CHIAKI_DISCOVERY_HOST_STATE_STANDBY;
+
+  // Copy host name
+  if (discovered && host->discovery_state) {
+    snprintf(card->name, sizeof(card->name), "%s", host->discovery_state->host_name);
+    snprintf(card->ip_address, sizeof(card->ip_address), "%s", host->discovery_state->host_addr);
+  } else if (registered && host->registered_state) {
+    snprintf(card->name, sizeof(card->name), "%s", host->registered_state->server_nickname);
+    snprintf(card->ip_address, sizeof(card->ip_address), "%s", host->hostname);
+  } else if (host->hostname) {
+    snprintf(card->name, sizeof(card->name), "%s", host->hostname);
+    snprintf(card->ip_address, sizeof(card->ip_address), "%s", host->hostname);
+  }
+
+  // Map host state to console state
+  if (discovered && !at_rest) {
+    card->status = 0;  // Available
+    card->state = 1;   // Ready
+  } else if (at_rest) {
+    card->status = 2;  // Connecting/Standby
+    card->state = 2;   // Standby
+  } else {
+    card->status = 1;  // Unavailable
+    card->state = 0;   // Unknown
+  }
+
+  card->is_registered = registered;
+  card->is_discovered = discovered;
+  card->host = host;
+}
+
+/// Render a single console card
+void render_console_card(ConsoleCardInfo* console, int x, int y, bool selected) {
+  if (!console) return;
+
+  // Selection highlight (PlayStation Blue border)
+  if (selected) {
+    draw_rounded_rectangle(x - 4, y - 4, CONSOLE_CARD_WIDTH + 8, CONSOLE_CARD_HEIGHT + 8, 12, UI_COLOR_PRIMARY_BLUE);
+  }
+
+  // Card background with shadow
+  draw_card_with_shadow(x, y, CONSOLE_CARD_WIDTH, CONSOLE_CARD_HEIGHT, 12, UI_COLOR_CARD_BG);
+
+  // Console state glow (if Ready or Standby)
+  if (console->state == 1) {  // Ready - Blue glow
+    draw_rounded_rectangle(x - 2, y - 2, CONSOLE_CARD_WIDTH + 4, CONSOLE_CARD_HEIGHT + 4, 10,
+      RGBA8(52, 144, 255, 120));  // PlayStation Blue with transparency
+  } else if (console->state == 2) {  // Standby - Yellow glow
+    draw_rounded_rectangle(x - 2, y - 2, CONSOLE_CARD_WIDTH + 4, CONSOLE_CARD_HEIGHT + 4, 10,
+      RGBA8(255, 193, 7, 120));  // Yellow with transparency
+  }
+
+  // PS5 logo (centered, 1/3 from top)
+  bool is_ps5 = console->host && chiaki_target_is_ps5(console->host->target);
+  vita2d_texture* logo = is_ps5 ? img_ps5 : img_ps4;
+  if (logo) {
+    int logo_w = vita2d_texture_get_width(logo);
+    int logo_h = vita2d_texture_get_height(logo);
+    int logo_x = x + (CONSOLE_CARD_WIDTH / 2) - (logo_w / 2);
+    int logo_y = y + (CONSOLE_CARD_HEIGHT / 3) - (logo_h / 2);
+    vita2d_draw_texture(logo, logo_x, logo_y);
+  }
+
+  // Console name bar (1/3 from bottom)
+  int name_bar_y = y + CONSOLE_CARD_HEIGHT - (CONSOLE_CARD_HEIGHT / 3) - 20;
+  draw_rounded_rectangle(x + 15, name_bar_y, CONSOLE_CARD_WIDTH - 30, 40, 8,
+    RGBA8(70, 75, 80, 255));
+
+  // Console name text (centered in bar)
+  int text_width = vita2d_font_text_width(font, 20, console->name);
+  int text_x = x + (CONSOLE_CARD_WIDTH / 2) - (text_width / 2);
+  vita2d_font_draw_text(font, text_x, name_bar_y + 27, UI_COLOR_TEXT_PRIMARY, 20, console->name);
+
+  // Status indicator (top-right)
+  vita2d_texture* status_tex = NULL;
+  if (console->status == 0) status_tex = ellipse_green;
+  else if (console->status == 1) status_tex = ellipse_red;
+  else if (console->status == 2) status_tex = ellipse_yellow;
+
+  if (status_tex) {
+    vita2d_draw_texture(status_tex, x + CONSOLE_CARD_WIDTH - 35, y + 10);
+  }
+
+  // State text ("Ready" / "Standby")
+  const char* state_text = NULL;
+  uint32_t state_color = UI_COLOR_TEXT_SECONDARY;
+  if (console->state == 1) {
+    state_text = "Ready";
+    state_color = RGBA8(52, 144, 255, 255);  // PlayStation Blue
+  } else if (console->state == 2) {
+    state_text = "Standby";
+    state_color = RGBA8(255, 193, 7, 255);  // Yellow
+  }
+
+  if (state_text) {
+    int state_text_width = vita2d_font_text_width(font, 18, state_text);
+    int state_x = x + (CONSOLE_CARD_WIDTH / 2) - (state_text_width / 2);
+    vita2d_font_draw_text(font, state_x, name_bar_y + 55, state_color, 18, state_text);
+  }
+}
+
+/// Render console cards in grid layout
+void render_console_grid() {
+  int screen_center_x = VITA_WIDTH / 2;
+  int content_area_x = WAVE_NAV_WIDTH + ((VITA_WIDTH - WAVE_NAV_WIDTH) / 2);
+
+  // Header text
+  vita2d_font_draw_text(font, content_area_x - 150, 100, UI_COLOR_TEXT_PRIMARY, 24,
+    "Which do you want to connect?");
+
+  int num_hosts = 0;
+  ConsoleCardInfo cards[MAX_NUM_HOSTS];
+
+  // Map all vitaki hosts to console cards
+  for (int i = 0; i < MAX_NUM_HOSTS; i++) {
+    if (context.hosts[i]) {
+      map_host_to_console_card(context.hosts[i], &cards[num_hosts]);
+      num_hosts++;
+    }
+  }
+
+  // Render console cards
+  for (int i = 0; i < num_hosts; i++) {
+    int card_x = content_area_x - (CONSOLE_CARD_WIDTH / 2);
+    int card_y = CONSOLE_CARD_START_Y + (i * CONSOLE_CARD_SPACING);
+
+    bool selected = (i == selected_console_index);
+    render_console_card(&cards[i], card_x, card_y, selected);
+  }
+
+  // "Add New" button at bottom
+  if (button_add_new) {
+    int btn_w = vita2d_texture_get_width(button_add_new);
+    int btn_x = content_area_x - (btn_w / 2);
+    int btn_y = CONSOLE_CARD_START_Y + (num_hosts * CONSOLE_CARD_SPACING) + 20;
+    vita2d_draw_texture(button_add_new, btn_x, btn_y);
   }
 }
 
@@ -876,72 +1040,81 @@ UIScreenType draw_main_menu() {
     return next_screen;
   }
 
-  next_screen = draw_header_bar();
+  // Render VitaRPS5 console cards instead of host tiles
+  render_console_grid();
 
-  int host_slots = 0;
-  UIHostAction host_action = UI_HOST_ACTION_NONE;
+  // Handle console card navigation (Up/Down to select cards)
+  int num_hosts = 0;
   for (int i = 0; i < MAX_NUM_HOSTS; i++) {
-    VitaChiakiHost* host = context.hosts[i];
-    if (!host) {
-      continue;
+    if (context.hosts[i]) num_hosts++;
+  }
+
+  if (num_hosts > 0) {
+    if (btn_pressed(SCE_CTRL_UP)) {
+      selected_console_index = (selected_console_index - 1 + num_hosts) % num_hosts;
+    } else if (btn_pressed(SCE_CTRL_DOWN)) {
+      selected_console_index = (selected_console_index + 1) % num_hosts;
     }
-    host_action = host_tile(host_slots, host);
 
-    host_slots++;
+    // Handle card actions (Cross to connect, Square to wake)
+    if (btn_pressed(SCE_CTRL_CROSS) || btn_pressed(SCE_CTRL_CIRCLE)) {
+      // Set active host from selected card
+      int host_idx = 0;
+      for (int i = 0; i < MAX_NUM_HOSTS; i++) {
+        if (context.hosts[i]) {
+          if (host_idx == selected_console_index) {
+            context.active_host = context.hosts[i];
 
-    // don't keep trying to draw tiles, since we just called vita2d_end_drawing();
-    if (host_action == UI_HOST_ACTION_STREAM) break;
-  }
-  if (host_slots == 0) {
-    // TODO: Draw a "Please add a host via the header bar" message
-    //       in the center of the screen, maybe with a nice little arrow image?
-  } else if (host_action == UI_HOST_ACTION_WAKEUP) {
-    host_wakeup(context.active_host);
-  } else if (host_action == UI_HOST_ACTION_STREAM) {
-    next_screen = UI_SCREEN_TYPE_MESSAGES;
-  } else if (host_action == UI_HOST_ACTION_EDIT) {
-    // next_screen = UI_SCREEN_TYPE_REGISTER_HOST;
-    // next_screen = UI_SCREEN_TYPE_EDIT_HOST;
-  } else if (host_action == UI_HOST_ACTION_REGISTER) {
-    next_screen = UI_SCREEN_TYPE_REGISTER_HOST;
-  }
+            bool discovered = (context.active_host->type & DISCOVERED) && (context.active_host->discovery_state);
+            bool registered = context.active_host->type & REGISTERED;
+            bool at_rest = discovered && context.active_host->discovery_state &&
+                           context.active_host->discovery_state->state == CHIAKI_DISCOVERY_HOST_STATE_STANDBY;
 
-  // Add "tooltip" in bottom of screen
-  int font_size = 18;
-  int tooltip_x = 10;
-  int tooltip_y = VITA_HEIGHT - font_size;
-  char* tooltip_msg = "";
-
-  switch (context.ui_state.active_item) {
-  case UI_MAIN_WIDGET_ADD_HOST_BTN:
-    tooltip_msg = "Manually add remote host";
-    break;
-  case UI_MAIN_WIDGET_REGISTER_BTN:
-    tooltip_msg = "Manually register (functionality currently disabled)";
-    break;
-  case UI_MAIN_WIDGET_DISCOVERY_BTN:
-    tooltip_msg = (context.discovery_enabled) ? "Turn off discovery" : "Turn on discovery";
-    break;
-  case UI_MAIN_WIDGET_MESSAGES_BTN:
-    tooltip_msg = "View log";
-    break;
-  case UI_MAIN_WIDGET_SETTINGS_BTN:
-    tooltip_msg = "Settings";
-    break;
-  default:
-    tooltip_msg = "";
-  }
-  if (context.ui_state.active_item & UI_MAIN_WIDGET_HOST_TILE) {
-    tooltip_msg = active_tile_tooltip_msg;
+            if (discovered && !at_rest && registered) {
+              next_screen = UI_SCREEN_TYPE_MESSAGES;
+              host_stream(context.active_host);
+            } else if (at_rest) {
+              host_wakeup(context.active_host);
+            } else if (!registered) {
+              next_screen = UI_SCREEN_TYPE_REGISTER_HOST;
+            }
+            break;
+          }
+          host_idx++;
+        }
+      }
+    } else if (btn_pressed(SCE_CTRL_SQUARE)) {
+      // Wake selected console
+      int host_idx = 0;
+      for (int i = 0; i < MAX_NUM_HOSTS; i++) {
+        if (context.hosts[i]) {
+          if (host_idx == selected_console_index) {
+            host_wakeup(context.hosts[i]);
+            break;
+          }
+          host_idx++;
+        }
+      }
+    }
+  } else {
+    // No hosts - show empty state message
+    int msg_x = WAVE_NAV_WIDTH + ((VITA_WIDTH - WAVE_NAV_WIDTH) / 2) - 200;
+    vita2d_font_draw_text(font, msg_x, VITA_HEIGHT / 2, UI_COLOR_TEXT_SECONDARY, 20,
+      "No consoles found. Press Start to discover.");
   }
 
-
-  if (strlen(tooltip_msg)) {
-    vita2d_font_draw_text(font, tooltip_x, tooltip_y,
-                          COLOR_WHITE, font_size,
-                          tooltip_msg
-                          );
+  // Handle "Add New" button (Start button to trigger discovery)
+  if (btn_pressed(SCE_CTRL_START)) {
+    if (!context.discovery_enabled) {
+      start_discovery(NULL, NULL);
+    }
   }
+
+  // VitaRPS5 UI control hints at bottom
+  int hint_y = VITA_HEIGHT - 25;
+  int hint_x = WAVE_NAV_WIDTH + 20;
+  vita2d_font_draw_text(font, hint_x, hint_y, UI_COLOR_TEXT_TERTIARY, 16,
+    "L1/R1: Nav | Up/Down: Select | Cross: Connect | Square: Wake | Start: Discover");
 
 
   return next_screen;
