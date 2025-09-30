@@ -1,113 +1,206 @@
-# Current TODO Items - Path B: UI Modernization Complete ✅
+# Current TODO Items - Full VitaRPS5 UI Implementation
 
-## 🎯 Goal: Enhance vitaki-fork's UI with VitaRPS5's Modern Visual Design
+## 🎯 Goal: Complete VitaRPS5 UI Experience with vitaki-fork Backend
 
-**Strategy**: Keep vitaki-fork's proven backend (1,212 lines of working code), modernize with VitaRPS5 visual styling.
+**Strategy**: Rebuild entire UI layer to match VitaRPS5 design while keeping vitaki-fork's proven backend 100% untouched.
 
-**Status**: Path B implementation COMPLETE - All major UI screens modernized.
+**Status**: Documentation complete, ready for phased implementation.
 
-## ✅ Completed Phases
+## 📋 Implementation Phases
 
-### Phase 1: Visual Foundation ✅ (v0.1.51-52)
-- [x] Extract VitaRPS5 rendering helpers (rounded rects, shadows, circles)
-- [x] Add VitaRPS5 color scheme (PlayStation Blue, charcoal backgrounds, status colors)
-- [x] Add rendering helper functions to ui.c
-- [x] Apply modern styling to host cards (rounded corners, shadows)
-- [x] Test basic rendering compilation
+### Phase 1: Foundation - Particle System ⏳
+**Estimated Time**: 2-3 hours
 
-**Result**: 3 rendering helpers added, modern color palette integrated, host cards modernized.
+**Tasks:**
+- [ ] Add VitaRPS5 symbol textures to CMakeLists.txt
+  - symbol_triangle.png, symbol_circle.png, symbol_ex.png, symbol_square.png
+- [ ] Load symbol textures in `load_textures()`
+- [ ] Initialize particle system (12 particles)
+- [ ] Implement `update_particles()` function (upward drift with rotation)
+- [ ] Implement `render_particles()` function
+- [ ] Test particle rendering on black background
 
-### Phase 2: Dashboard Modernization ✅ (v0.1.53)
-- [x] Replace black background with modern charcoal (UI_COLOR_BACKGROUND)
-- [x] Modernize header bar with rounded card and shadow
-- [x] Update registration screen with modern card layout (800x380)
-- [x] Implement text color hierarchy (primary/secondary/tertiary)
-- [x] Add proper spacing and visual depth
+**Deliverable:** Animated PlayStation symbols floating upward
 
-**Result**: Dashboard has modern card-based design with consistent visual language.
+**Files Modified:**
+- `vita/src/ui.c` - Add particle system
+- `vita/CMakeLists.txt` - Add symbol texture paths
 
-### Phase 3: Settings Screen Overhaul ✅ (v0.1.54)
-- [x] Large settings card (880x460) with rounded corners
-- [x] Condense controller map help text (13 lines → 6 lines)
-- [x] Implement modern color hierarchy for text
-- [x] Add PlayStation Blue accents for important tips
-- [x] Position elements within card layout
-- [x] Add bottom tooltip with exit instructions
+---
 
-**Result**: Settings screen has clean, modern design with improved readability.
+### Phase 2: Wave Navigation Sidebar ⏳
+**Estimated Time**: 2-3 hours
 
-## 📊 Current Status
+**Tasks:**
+- [ ] Add wave textures to CMakeLists.txt
+  - wave_top.png, wave_bottom.png
+- [ ] Load wave and navigation icon textures
+- [ ] Implement `render_wave_navigation()` function
+  - Draw wave textures as background
+  - Render 4 navigation icons (Play, Settings, Controller, Profile)
+  - Add selection highlight (PlayStation Blue circle)
+  - Apply wave animation (vertical sine wave motion)
+- [ ] Add navigation state variables
+- [ ] Wire icon selection to screen switching
 
-| Component | Status | Version | Notes |
-|-----------|--------|---------|-------|
-| Color Scheme | ✅ Complete | v0.1.51 | PlayStation colors integrated |
-| Rendering Helpers | ✅ Complete | v0.1.51 | 3 helpers (circle, rounded rect, card+shadow) |
-| Host Cards | ✅ Complete | v0.1.52 | Rounded corners, shadows, blue selection |
-| Background | ✅ Complete | v0.1.53 | Modern charcoal background |
-| Header Bar | ✅ Complete | v0.1.53 | Rounded card with shadow |
-| Registration Screen | ✅ Complete | v0.1.53 | Modern card layout |
-| Settings Screen | ✅ Complete | v0.1.54 | Condensed, modern card design |
-| Backend Integration | ✅ Complete | All | 100% vitaki-fork backend untouched |
+**Deliverable:** Working wave sidebar with navigation
 
-## 🎯 Success Criteria - ALL MET ✅
+**Files Modified:**
+- `vita/src/ui.c` - Add wave sidebar rendering
+- `vita/CMakeLists.txt` - Add wave/icon texture paths
 
-1. ✅ **Proven vitaki-fork backend**: 100% untouched and working
-2. ✅ **Modern VitaRPS5 visual design**: Implemented throughout UI
-3. ✅ **Clean architecture**: No backend coupling, pure visual enhancements
-4. ✅ **Fast completion**: 4 builds (v0.1.51-54), Path B complete
-5. ✅ **All builds successful**: No compilation errors
+---
 
-## 📦 Deliverables
+### Phase 3: Console Card Display ⏳
+**Estimated Time**: 3-4 hours
 
-**Build Artifacts:**
-- VitakiForkv0.1.51.vpk - Color scheme and helpers
-- VitakiForkv0.1.52.vpk - Modernized host cards
-- VitakiForkv0.1.53.vpk - Dashboard and registration modernization
-- VitakiForkv0.1.54.vpk - Settings screen overhaul (FINAL)
+**Tasks:**
+- [ ] Add console card textures to CMakeLists.txt
+  - console_card.png, ellipse_*.png
+- [ ] Create `ConsoleCardInfo` struct
+- [ ] Map vitaki hosts to console card data
+- [ ] Implement `render_console_card()` function
+  - Card background with shadow
+  - PS5 logo (centered, 1/3 from top)
+  - Console name bar (1/3 from bottom)
+  - Status indicator (top-right)
+  - State text ("Ready" / "Standby")
+  - State glow (blue for Ready, yellow for Standby)
+- [ ] Implement `render_console_grid()` function
+- [ ] Add selection highlight (PlayStation Blue border)
+- [ ] Update `draw_main_menu()` to use console cards
 
-**Code Changes:**
-- vita/src/ui.c: Added 3 rendering helpers, modernized all screens
-- Visual only - no functional changes to backend
+**Deliverable:** Console cards displaying vitaki hosts
 
-## 🚀 Ready for Hardware Testing
+**Files Modified:**
+- `vita/src/ui.c` - Replace host tiles with console cards
+- `vita/CMakeLists.txt` - Add card texture paths
 
-The UI modernization is **complete and ready for testing** on actual PS Vita hardware:
+---
 
-**Test Checklist:**
-- [ ] Visual appearance on hardware (colors, shadows, rounded corners)
-- [ ] Text readability with new color hierarchy
-- [ ] Host card interactions (selection, navigation)
-- [ ] Settings form inputs
-- [ ] Registration flow visuals
-- [ ] Overall performance (rendering helpers impact)
+### Phase 4: Touch Screen Interactions ⏳
+**Estimated Time**: 2-3 hours
 
-**Expected Behavior:**
-- Modern card-based design throughout
-- PlayStation Blue selection highlights
-- Charcoal background theme
-- Shadow effects for visual depth
-- All vitaki-fork functionality unchanged
+**Tasks:**
+- [ ] Implement `handle_touch_input()` function
+- [ ] Add `is_point_in_circle()` helper (for wave icons)
+- [ ] Add `is_point_in_rect()` helper (for cards/buttons)
+- [ ] Implement touch detection for:
+  - Wave navigation icons (4 circular hitboxes)
+  - Console cards (rectangular hitboxes)
+  - Add New button (rectangular hitbox)
+  - Wake/Register buttons (when visible)
+- [ ] Add visual feedback for touches
+- [ ] Wire touch events to actions
 
-## 📝 Path B vs Path A Comparison
+**Deliverable:** Full touch screen control
 
-**Path A (Abandoned)**: Bridge VitaRPS5 UI (10,951 lines) to vitaki backend
-- Estimated: 3-5 days
-- Complexity: High (23+ backend function calls to bridge)
-- Risk: VitaRPS5 backend confirmed broken by user
+**Files Modified:**
+- `vita/src/ui.c` - Add touch input handling
 
-**Path B (Completed)**: Enhance vitaki UI (1,212 lines) with VitaRPS5 styling
-- Actual: 4 builds, completed in session
-- Complexity: Low (visual only, no backend changes)
-- Risk: None (working backend preserved)
+---
 
-**Path B was the correct choice** - modern visual design achieved while keeping proven functionality.
+### Phase 5: Backend Integration ⏳
+**Estimated Time**: 1-2 hours
 
-## 📁 Related Documentation
+**Tasks:**
+- [ ] Wire console selection to `context.active_host`
+- [ ] Wire console connect to `host_stream()`
+- [ ] Wire "Add New" button to `start_discovery()`
+- [ ] Wire "Wake" button to `host_wakeup()`
+- [ ] Wire "Register" button to registration screen
+- [ ] Test complete flow: discover → register → connect
+- [ ] Verify all vitaki functionality works
 
-- See `docs/ai/current_status/ARCHIVED.md` for Path A abandonment details
-- See `docs/ai/current_status/DONE.md` for completed work archive
-- Commits: 22cc6c3, 75d0045, d731541, f25204e
+**Deliverable:** Full VitaRPS5 UI with vitaki backend
 
-## 🎉 Project Status: Path B Complete
+**Files Modified:**
+- `vita/src/ui.c` - Wire UI actions to vitaki backend
 
-vitaki-fork now has VitaRPS5's modern visual design with its proven backend intact. Ready for hardware validation.
+---
+
+### Phase 6: Polish & Testing ⏳
+**Estimated Time**: 2-3 hours
+
+**Tasks:**
+- [ ] Add animations and transitions
+- [ ] Optimize rendering performance
+- [ ] Add "Add New" button rendering
+- [ ] Add empty state ("No consoles found. Tap Add New to discover.")
+- [ ] Test on hardware
+- [ ] Fix bugs and edge cases
+- [ ] Performance testing (60 FPS target)
+
+**Deliverable:** Production-ready VitaRPS5 UI
+
+**Files Modified:**
+- `vita/src/ui.c` - Polish and bug fixes
+
+---
+
+## 📊 Progress Tracking
+
+| Phase | Status | Est. Hours | Actual Hours | Completion |
+|-------|--------|------------|--------------|------------|
+| 1. Particle System | ⏳ Pending | 2-3 | - | 0% |
+| 2. Wave Navigation | ⏳ Pending | 2-3 | - | 0% |
+| 3. Console Cards | ⏳ Pending | 3-4 | - | 0% |
+| 4. Touch Interactions | ⏳ Pending | 2-3 | - | 0% |
+| 5. Backend Integration | ⏳ Pending | 1-2 | - | 0% |
+| 6. Polish & Testing | ⏳ Pending | 2-3 | - | 0% |
+| **Total** | | **15-20** | - | **0%** |
+
+## 🎯 Success Criteria
+
+1. ⏳ Animated PlayStation symbol background (12 particles)
+2. ⏳ Wave navigation sidebar with 4 icons
+3. ⏳ Console cards (400x200) displaying vitaki hosts
+4. ⏳ Touch screen interactions working
+5. ⏳ All vitaki backend functions operational (discovery, registration, streaming)
+6. ⏳ Smooth 60 FPS animations
+7. ⏳ No regressions in vitaki functionality
+
+## 📝 Key Documents
+
+- **Implementation Spec**: `VITARPS5_UI_IMPLEMENTATION_SPEC.md` - Complete technical specification
+- **Done Work**: `DONE.md` - Path B partial styling (v0.1.51-54)
+- **Archived**: `ARCHIVED.md` - Path A (full integration) and Path B (partial styling)
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│              VitaRPS5 UI Layer (NEW)                     │
+│  - Wave navigation sidebar                               │
+│  - Animated particle background                          │
+│  - Console cards                                         │
+│  - Touch interactions                                    │
+│  (All in ui.c - complete rewrite of rendering/input)    │
+├─────────────────────────────────────────────────────────┤
+│       vitaki-fork Backend (UNCHANGED - 100%)             │
+│  discovery.c, host.c, config.c, video.c, etc.           │
+│  All proven functionality preserved                      │
+└─────────────────────────────────────────────────────────┘
+```
+
+## 🚀 Next Steps
+
+1. Start with Phase 1 (Particle System)
+2. Test each phase independently before moving forward
+3. Commit after each successful phase
+4. Update this TODO.md with progress
+5. Build and test on hardware after Phase 3 (first visible UI)
+
+## ⚠️ Important Notes
+
+- This is purely UI work - vitaki backend remains untouched
+- All changes confined to `vita/src/ui.c` and `vita/CMakeLists.txt`
+- Existing vitaki functionality must work unchanged
+- Both touch and controller input supported
+- Can pause between phases for testing/feedback
+
+## 📦 Build Versioning
+
+When phases are complete:
+- v0.1.56+ - Incremental builds as phases complete
+- Final version will be v0.2.0 (major UI redesign)

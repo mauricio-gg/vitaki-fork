@@ -1,6 +1,6 @@
-# Archived: VitaRPS5 Full Integration Attempt
+# Archived Approaches
 
-## Date: 2025-09-30
+## Path A: VitaRPS5 Full Integration Attempt (Archived 2025-09-30)
 
 ### What Was Attempted
 Tried to integrate VitaRPS5's modern UI by importing the entire VitaRPS5 codebase (90+ files including UI and complete backend).
@@ -34,18 +34,55 @@ All VitaRPS5 modules copied to vita/src/:
 3. Visual styling can be separated from logic - just copy rendering helpers
 4. Working backends are more valuable than fancy UIs
 
-### New Approach (Path B)
+### New Approach (Path B) - Superseded
 **Goal:** Enhance vitaki-fork's working UI (1,212 lines) with VitaRPS5's visual style
 
-**Strategy:**
-1. Keep vitaki-fork backend untouched (discovery, streaming, registration work)
-2. Extract only VitaRPS5 rendering functions (rounded rects, shadows, animations)
-3. Copy VitaRPS5 assets (32 PNGs)
-4. Rebuild UI screens with modern styling
-5. Estimated time: 2-3 days vs 5+ days for full integration
+**What Was Delivered:** (v0.1.51-54)
+1. Rendering helpers (rounded rects, shadows, circles)
+2. PlayStation color scheme
+3. Modern styling on existing vitaki layout
+4. 4 builds completed successfully
 
-This approach gives us the best of both worlds:
-- ✅ Proven vitaki-fork backend
-- ✅ Modern VitaRPS5 visual design
-- ✅ Clean architecture
-- ✅ Faster completion
+**Why Superseded:**
+User clarified they want **complete VitaRPS5 UI layout**, not just visual styling:
+- Wave navigation sidebar (not just styled header bar)
+- Animated PlayStation symbol background (not just charcoal color)
+- Console cards (not just styled host tiles)
+- Full touch screen interactions
+
+Path B delivered **polish** but not the **full UI redesign** needed.
+
+---
+
+## Path B: Partial Styling Implementation (Archived 2025-09-30)
+
+### What Was Accomplished
+Applied VitaRPS5 visual styling to vitaki's existing UI layout (v0.1.51-54).
+
+**Delivered:**
+- 3 rendering helper functions
+- PlayStation color scheme
+- Rounded corners and shadows on UI elements
+- Modern text hierarchy
+
+**Why Insufficient:**
+- Kept vitaki's old layout (header bar with buttons, host tiles)
+- Needed complete VitaRPS5 layout (wave sidebar, console cards, particles)
+- Was styling enhancement, not full UI redesign
+
+See `DONE.md` for full details of Path B work.
+
+---
+
+## Current Approach: Full VitaRPS5 UI Implementation
+
+**Goal:** Complete VitaRPS5 UI experience with vitaki backend
+
+**Components:**
+1. Wave navigation sidebar (130px left)
+2. Animated PlayStation symbol background
+3. Console cards (400x200) in center
+4. Touch screen interactions
+5. Discovery and action buttons
+
+**See:** `VITARPS5_UI_IMPLEMENTATION_SPEC.md` for full specification
