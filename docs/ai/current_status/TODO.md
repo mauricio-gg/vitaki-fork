@@ -1,131 +1,111 @@
-# Current TODO Items - Phase 5: Future Enhancements
+# Current TODO Items - UI Integration with vitaki-fork Backend
 
-## ✅ MAJOR MILESTONE - VitaRPS5 Production Ready
+## 🎯 Current Phase: VitaRPS5 UI Integration (Fresh Start)
 
-All core functionality has been successfully implemented! VitaRPS5 now provides complete PlayStation 5 remote play functionality with professional quality.
+**Goal**: Replace vitaki-fork's simple UI with VitaRPS5's modern PlayStation-inspired UI while keeping vitaki-fork's proven backend (discovery, streaming, registration).
 
-## 🎉 Completed Phase 4 - Complete Feature Implementation
+### Status: Architecture Decoupling Required
 
-All major features have been successfully implemented:
-- ✅ **PS5 Registration System**: Complete PIN entry and credential management
-- ✅ **Streaming Session Management**: Hardware-accelerated sub-50ms latency streaming
-- ✅ **Console Discovery**: Background state monitoring and wake-up system
-- ✅ **Settings Management**: Professional configuration with persistence
-- ✅ **PlayStation UI**: Modern animations and dual input support
+We discovered that VitaRPS5 UI is tightly coupled to VitaRPS5 backend. We're now creating a bridge layer to decouple the UI and wire it to vitaki-fork's backend.
 
-## 🚀 Phase 5: Optional Enhancements (Future Work)
+## 📋 Active TODO Items
 
-The core VitaRPS5 implementation is production-ready. The following items represent potential future enhancements:
+### Phase 1: Architecture Setup ✅
+- [x] Create clean branch from ywnico (working vitaki-fork)
+- [x] Copy entire VitaRPS5 project for reference
+- [x] Copy VitaRPS5 UI modules to vita/src/ui/
+- [x] Copy VitaRPS5 core/utils modules
+- [x] Update CMakeLists.txt structure
+- [x] Document architecture challenge
 
-### Advanced Features (Optional)
-- [ ] **HDR Support Enhancement**
-  - Implement HDR metadata parsing for PS5 HDR streams
-  - Add HDR tone mapping for OLED displays
-  - Test HDR compatibility with different PS5 games
+### Phase 2: Dependency Analysis & Stub Creation 🔄
+- [ ] **Document VitaRPS5 UI → Backend dependencies**
+  - Map all includes from UI files
+  - Identify which functions UI calls
+  - Document expected data structures
 
-- [ ] **Advanced Audio Features**
-  - Implement 3D audio processing from PS5 Tempest Engine
-  - Add audio latency compensation for perfect sync
-  - Support for high-quality audio codecs
+- [ ] **Create stub headers** for missing VitaRPS5 modules:
+  - `audio/audio_decoder.h` - Audio system interface
+  - `system/vita_system_info.h` - System info queries
+  - `discovery/ps5_discovery.h` - Console discovery interface
+  - `chiaki/chiaki_base64_vitaki.h` - Base64 utilities
 
-- [ ] **Cloud Gaming Integration**
-  - Add PlayStation Now streaming support
-  - Implement PS5 cloud gaming features
-  - Support for remote PlayStation libraries
+### Phase 3: Copy Remaining VitaRPS5 Modules
+- [ ] Copy audio/ module files
+- [ ] Copy system/ module files
+- [ ] Copy discovery/ module files
+- [ ] Copy chiaki/ integration files
+- [ ] Update CMakeLists.txt with new modules
 
-### Performance Optimizations (Optional)
-- [ ] **ARM Assembly Optimizations**
-  - Optimize video decoding with ARM NEON instructions
-  - Implement custom memory copy routines
-  - Add CPU-specific optimizations for Cortex-A9
+### Phase 4: Bridge Implementation
+- [ ] **Discovery Bridge**
+  - Map VitaRPS5 `ps5_discovery_*` → vitaki-fork `start_discovery/stop_discovery`
+  - Convert between VitaRPS5 and vitaki-fork host structures
 
-- [ ] **Advanced Networking**
-  - Implement adaptive streaming quality based on network conditions
-  - Add packet loss recovery mechanisms
-  - Support for multiple network interfaces
+- [ ] **Registration Bridge**
+  - Map VitaRPS5 registration → vitaki-fork `host_register()`
+  - Handle credential storage compatibility
 
-### Quality of Life Features (Optional)
-- [ ] **Replace Custom JSON Parser with Proper Library**
-  - **Priority**: High (reliability improvement)
-  - **Files affected**: `vita/src/core/console_storage.c`, `vita/src/core/profile_storage.c`
-  - **Problem**: Current hand-rolled JSON parser is fragile and caused crash-on-second-launch bug
-  - **Solution**: Replace with battle-tested library (jsmn, cJSON, or parson)
-  - **Benefits**: Better error handling, crash prevention, maintainability
-  - **Note**: Quick fix applied (added SCE_O_TRUNC flag) but proper library would be more robust
+- [ ] **Streaming Bridge**
+  - Map VitaRPS5 session start → vitaki-fork `host_stream()`
+  - Handle session state management
 
-- [ ] **Advanced Controller Mapping**
-  - Custom button remapping interface
-  - Per-game controller profiles
-  - Advanced macro and gesture support
+- [ ] **Settings Bridge**
+  - Map VitaRPS5 settings → vitaki-fork config.toml
+  - Ensure setting persistence works
 
-- [ ] **Statistics and Monitoring**
-  - Detailed performance analytics dashboard
-  - Network quality monitoring graphs
-  - Session recording and playback analysis
+### Phase 5: Compilation & Testing
+- [ ] Fix all compilation errors
+- [ ] Build successful VPK
+- [ ] Test UI initialization
+- [ ] Test basic navigation
+- [ ] Test console discovery display
+- [ ] Test registration flow
+- [ ] Test streaming initiation
 
-- [ ] **Accessibility Features**
-  - Screen reader support for visually impaired users
-  - High contrast mode and font scaling
-  - One-handed operation mode
+### Phase 6: Full Integration Testing
+- [ ] Test complete discovery → registration → streaming flow
+- [ ] Verify settings persistence
+- [ ] Test error handling
+- [ ] Performance testing
+- [ ] Memory leak checks
 
-### Integration Enhancements (Optional)
-- [ ] **PlayStation Account Integration**
-  - Direct PSN authentication without PC setup
-  - Friend list and party chat integration
-  - PlayStation Store access and game launching
+## 🚧 Current Blocker
 
-- [ ] **Multi-Console Support**
-  - Simultaneous connections to multiple consoles
-  - Console switching without disconnection
-  - Shared session management
+**Compilation fails** due to missing VitaRPS5 backend module headers:
+```
+fatal error: ../audio/audio_decoder.h: No such file or directory
+fatal error: ../system/vita_system_info.h: No such file or directory
+fatal error: ../discovery/ps5_discovery.h: No such file or directory
+fatal error: ../chiaki/chiaki_base64_vitaki.h: No such file or directory
+```
 
-## 📊 Current Status: PRODUCTION READY
+**Next Step**: Copy remaining VitaRPS5 modules, then create bridge layer to map calls to vitaki-fork backend.
 
-### What's Working (100% Complete)
-- ✅ **PS5 Registration**: PIN entry, credential validation, persistent storage
-- ✅ **Streaming**: Hardware-accelerated H.264 decode, sub-50ms latency
-- ✅ **Discovery**: Background state checking, reliable wake-up
-- ✅ **Settings**: Complete configuration management with persistence
-- ✅ **UI**: Modern PlayStation-inspired interface with animations
-- ✅ **Input**: Dual touch and controller support
-- ✅ **Performance**: 60fps UI, zero crashes, memory efficient
-- ✅ **Build**: Docker-based 3.2MB VPK generation
+## 📊 Progress Metrics
 
-### Quality Metrics Achieved
-| Metric | Target | Current Status |
-|--------|--------|----------------|
-| **Latency** | <50ms | ✅ Sub-50ms achieved |
-| **Stability** | 30+ min sessions | ✅ Zero crashes |
-| **Performance** | 60fps UI | ✅ Smooth animations |
-| **Code Quality** | Production standards | ✅ Modular architecture |
-| **Features** | Complete PS5 support | ✅ Full implementation |
+| Component | Status | Progress |
+|-----------|--------|----------|
+| Branch Setup | ✅ Complete | 100% |
+| UI Files Copied | ✅ Complete | 100% |
+| Core/Utils Copied | ✅ Complete | 100% |
+| Dependencies Analysis | 🔄 In Progress | 10% |
+| Stub Creation | ⏳ Pending | 0% |
+| Bridge Implementation | ⏳ Pending | 0% |
+| Build Success | ❌ Blocked | 0% |
+| Hardware Testing | ⏳ Pending | 0% |
 
-## 🏆 Project Status: MISSION ACCOMPLISHED
+## 🎯 Success Criteria
 
-VitaRPS5 has successfully achieved all primary objectives:
+1. ✅ Clean separation: VitaRPS5 UI frontend + vitaki-fork backend
+2. ✅ Working build producing VPK
+3. ✅ UI displays correctly on hardware
+4. ✅ All backend functions work (discovery, registration, streaming)
+5. ✅ No duplicate code between UI and backend layers
 
-1. **Complete PS5 Remote Play**: Full registration, discovery, and streaming
-2. **Professional Quality**: Production-ready code with comprehensive error handling
-3. **Hardware Optimization**: Leverages PS Vita's capabilities for optimal performance
-4. **Modern Interface**: PlayStation-inspired UI with smooth animations
-5. **Reliable Operation**: Stable streaming sessions with sub-50ms latency
+## 📝 Documentation Requirements
 
-The project is now **ready for release** and provides a complete, professional PlayStation 5 remote play experience on PS Vita.
-
-## 📚 Documentation Status
-
-All major features are documented in:
-- **DONE.md**: Complete feature implementation details
-- **Architecture docs**: Technical implementation details
-- **Build system**: Docker-based build process
-- **User guides**: Setup and usage instructions
-
-## 🔄 Maintenance Mode
-
-The project has transitioned to maintenance mode with the following responsibilities:
-1. **Bug fixes**: Address any discovered issues
-2. **Performance monitoring**: Ensure optimal operation
-3. **Documentation updates**: Keep documentation current
-4. **Community support**: Help users with setup and usage
-
-**Note**: All Phase 5 items are optional enhancements. The core VitaRPS5 functionality is complete and production-ready.
+- Keep TODO.md updated with each phase completion
+- Document bridge API in separate file
+- Archive completed phases to DONE.md
+- Maintain vitaki-fork backend API documentation
