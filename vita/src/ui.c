@@ -5,6 +5,7 @@
 #include <math.h>
 #include <vita2d.h>
 #include <psp2/ctrl.h>
+#include <psp2/touch.h>
 #include <psp2/message_dialog.h>
 #include <psp2/registrymgr.h>
 #include <psp2/ime_dialog.h>
@@ -572,6 +573,107 @@ bool is_touched(int x, int y, int width, int height) {
          tdf->report->y > y && tdf->report->y <= y + height;
 }
 
+/// Check if a point is inside a circle (for wave navigation icons)
+bool is_point_in_circle(float px, float py, int cx, int cy, int radius) {
+  float dx = px - cx;
+  float dy = py - cy;
+  return (dx*dx + dy*dy) <= (radius*radius);
+}
+
+/// Check if a point is inside a rectangle (for cards and buttons)
+bool is_point_in_rect(float px, float py, int rx, int ry, int rw, int rh) {
+  return (px >= rx && px <= rx + rw && py >= ry && py <= ry + rh);
+}
+
+/// Handle VitaRPS5 touch screen input
+UIScreenType handle_vitarps5_touch_input(int num_hosts) {
+  SceTouchData touch;
+  sceTouchPeek(SCE_TOUCH_PORT_FRONT, &touch, 1);
+
+  if (touch.reportNum > 0) {
+    // Convert touch coordinates to screen coordinates
+    // Vita touch resolution: 1920x1088, screen: 960x544
+    float touch_x = (touch.report[0].x / 1920.0f) * 960.0f;
+    float touch_y = (touch.report[0].y / 1088.0f) * 544.0f;
+
+    // Check wave navigation icons (circular hitboxes)
+    for (int i = 0; i < 4; i++) {
+      int icon_x = WAVE_NAV_ICON_X;
+      int icon_y = WAVE_NAV_ICON_START_Y + (i * WAVE_NAV_ICON_SPACING);
+      float wave_offset = sinf(wave_animation_time + i * 0.5f) * 3.0f;
+
+      if (is_point_in_circle(touch_x, touch_y, icon_x, icon_y + wave_offset, 30)) {
+        selected_nav_icon = i;
+        // Navigate to screen based on icon
+        switch (i) {
+          case 0: return UI_SCREEN_TYPE_MAIN;
+          case 1: return UI_SCREEN_TYPE_SETTINGS;
+          case 2: return UI_SCREEN_TYPE_REGISTER_HOST;  // Controller (placeholder)
+          case 3: return UI_SCREEN_TYPE_REGISTER_HOST;  // Profile (placeholder)
+        }
+      }
+    }
+
+    // Check console cards (rectangular hitboxes)
+    if (num_hosts > 0) {
+      int content_area_x = WAVE_NAV_WIDTH + ((VITA_WIDTH - WAVE_NAV_WIDTH) / 2);
+      for (int i = 0; i < num_hosts; i++) {
+        int card_x = content_area_x - (CONSOLE_CARD_WIDTH / 2);
+        int card_y = CONSOLE_CARD_START_Y + (i * CONSOLE_CARD_SPACING);
+
+        if (is_point_in_rect(touch_x, touch_y, card_x, card_y,
+            CONSOLE_CARD_WIDTH, CONSOLE_CARD_HEIGHT)) {
+          // Select card and trigger connect action
+          selected_console_index = i;
+
+          // Find and connect to selected host
+          int host_idx = 0;
+          for (int j = 0; j < MAX_NUM_HOSTS; j++) {
+            if (context.hosts[j]) {
+              if (host_idx == selected_console_index) {
+                context.active_host = context.hosts[j];
+
+                bool discovered = (context.active_host->type & DISCOVERED) && (context.active_host->discovery_state);
+                bool registered = context.active_host->type & REGISTERED;
+                bool at_rest = discovered && context.active_host->discovery_state &&
+                               context.active_host->discovery_state->state == CHIAKI_DISCOVERY_HOST_STATE_STANDBY;
+
+                if (discovered && !at_rest && registered) {
+                  host_stream(context.active_host);
+                  return UI_SCREEN_TYPE_MESSAGES;
+                } else if (at_rest) {
+                  host_wakeup(context.active_host);
+                } else if (!registered) {
+                  return UI_SCREEN_TYPE_REGISTER_HOST;
+                }
+                break;
+              }
+              host_idx++;
+            }
+          }
+          break;
+        }
+      }
+
+      // Check "Add New" button
+      if (button_add_new) {
+        int btn_w = vita2d_texture_get_width(button_add_new);
+        int btn_x = content_area_x - (btn_w / 2);
+        int btn_y = CONSOLE_CARD_START_Y + (num_hosts * CONSOLE_CARD_SPACING) + 20;
+        int btn_h = vita2d_texture_get_height(button_add_new);
+
+        if (is_point_in_rect(touch_x, touch_y, btn_x, btn_y, btn_w, btn_h)) {
+          if (!context.discovery_enabled) {
+            start_discovery(NULL, NULL);
+          }
+        }
+      }
+    }
+  }
+
+  return UI_SCREEN_TYPE_MAIN;
+}
+
 /// Draw the tile for a host
 /// @return The action to take for the host
 UIHostAction host_tile(int host_slot, VitaChiakiHost* host) {
@@ -1108,6 +1210,12 @@ UIScreenType draw_main_menu() {
     if (!context.discovery_enabled) {
       start_discovery(NULL, NULL);
     }
+  }
+
+  // Handle touch screen input for VitaRPS5 UI
+  UIScreenType touch_screen = handle_vitarps5_touch_input(num_hosts);
+  if (touch_screen != UI_SCREEN_TYPE_MAIN) {
+    return touch_screen;
   }
 
   // VitaRPS5 UI control hints at bottom
