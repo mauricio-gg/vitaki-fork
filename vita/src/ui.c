@@ -146,6 +146,17 @@ typedef struct {
 } ConsoleCardInfo;
 
 static int selected_console_index = 0;
+static bool add_new_button_selected = false;
+
+// Focus system for D-pad navigation
+typedef enum {
+  FOCUS_NAV_BAR = 0,      // Wave navigation sidebar
+  FOCUS_CONSOLE_CARDS = 1, // Console cards area
+  FOCUS_ADD_NEW = 2        // Add New button
+} FocusArea;
+
+static FocusArea current_focus = FOCUS_CONSOLE_CARDS;
+static int last_console_selection = 0;  // Remember last selected console when moving away
 
 #define MAX_TOOLTIP_CHARS 200
 char active_tile_tooltip_msg[MAX_TOOLTIP_CHARS] = {0};
@@ -253,6 +264,149 @@ static void draw_card_with_shadow(int x, int y, int width, int height, int radiu
   draw_rounded_rectangle(x, y, width, height, radius, color);
 }
 
+// ============================================================================
+// PHASE 2: REUSABLE UI COMPONENTS
+// ============================================================================
+
+/// Draw a toggle switch (iOS-style)
+/// @param x X position
+/// @param y Y position
+/// @param width Total width of switch
+/// @param height Total height of switch
+/// @param state true = ON, false = OFF
+/// @param selected true if this control is currently selected
+static void draw_toggle_switch(int x, int y, int width, int height, bool state, bool selected) {
+  uint32_t track_color = state ? RGBA8(0x00, 0x70, 0xCC, 200) : RGBA8(0x60, 0x60, 0x60, 200);
+  uint32_t knob_color = RGBA8(0xFF, 0xFF, 0xFF, 255);
+
+  // Selection highlight
+  if (selected) {
+    draw_rounded_rectangle(x - 2, y - 2, width + 4, height + 4, height/2 + 1, UI_COLOR_PRIMARY_BLUE);
+  }
+
+  // Track (background)
+  draw_rounded_rectangle(x, y, width, height, height/2, track_color);
+
+  // Knob (circular button)
+  int knob_radius = (height - 4) / 2;
+  int knob_x = state ? (x + width - knob_radius - 2) : (x + knob_radius + 2);
+  int knob_y = y + height/2;
+
+  draw_circle(knob_x, knob_y, knob_radius, knob_color);
+}
+
+/// Draw a dropdown control
+/// @param x X position
+/// @param y Y position
+/// @param width Width of dropdown
+/// @param height Height of dropdown
+/// @param label Label text (left side)
+/// @param value Current value text (right side)
+/// @param expanded true if dropdown is expanded
+/// @param selected true if this control is currently selected
+static void draw_dropdown(int x, int y, int width, int height, const char* label,
+                          const char* value, bool expanded, bool selected) {
+  uint32_t bg_color = selected ? RGBA8(0x40, 0x40, 0x50, 255) : RGBA8(0x30, 0x30, 0x38, 255);
+
+  // Background
+  draw_rounded_rectangle(x, y, width, height, 8, bg_color);
+
+  // Selection highlight
+  if (selected && !expanded) {
+    draw_rounded_rectangle(x - 2, y - 2, width + 4, height + 4, 10, UI_COLOR_PRIMARY_BLUE);
+    draw_rounded_rectangle(x, y, width, height, 8, bg_color);
+  }
+
+  // Label text (left)
+  vita2d_font_draw_text(font, x + 15, y + height/2 + 6, UI_COLOR_TEXT_PRIMARY, 16, label);
+
+  // Value text (right)
+  int value_width = vita2d_font_text_width(font, 16, value);
+  vita2d_font_draw_text(font, x + width - value_width - 30, y + height/2 + 6,
+                        UI_COLOR_TEXT_PRIMARY, 16, value);
+
+  // Down arrow indicator (simple triangle)
+  int arrow_x = x + width - 18;
+  int arrow_y = y + height/2;
+  int arrow_size = 6;
+
+  // Draw downward pointing triangle
+  for (int i = 0; i < arrow_size; i++) {
+    vita2d_draw_rectangle(arrow_x - i, arrow_y + i, 1 + i*2, 1, UI_COLOR_TEXT_SECONDARY);
+  }
+}
+
+/// Draw a tab bar with colored sections
+/// @param x X position
+/// @param y Y position
+/// @param width Total width
+/// @param height Height of tab bar
+/// @param tabs Array of tab label strings
+/// @param colors Array of colors for each tab
+/// @param num_tabs Number of tabs
+/// @param selected Index of currently selected tab
+static void draw_tab_bar(int x, int y, int width, int height,
+                         const char* tabs[], uint32_t colors[], int num_tabs, int selected) {
+  int tab_width = width / num_tabs;
+
+  for (int i = 0; i < num_tabs; i++) {
+    int tab_x = x + (i * tab_width);
+
+    // Tab background (brighter if selected)
+    uint32_t tab_color = (i == selected) ? colors[i] : RGBA8(
+      (colors[i] >> 24) * 0.5,
+      ((colors[i] >> 16) & 0xFF) * 0.5,
+      ((colors[i] >> 8) & 0xFF) * 0.5,
+      200
+    );
+
+    draw_rounded_rectangle(tab_x, y, tab_width - 4, height, 8, tab_color);
+
+    // Tab text (centered)
+    int text_width = vita2d_font_text_width(font, 16, tabs[i]);
+    int text_x = tab_x + (tab_width - text_width) / 2;
+    int text_y = y + height/2 + 6;
+
+    vita2d_font_draw_text(font, text_x, text_y, UI_COLOR_TEXT_PRIMARY, 16, tabs[i]);
+
+    // Selection indicator (bottom bar)
+    if (i == selected) {
+      vita2d_draw_rectangle(tab_x + 2, y + height - 3, tab_width - 8, 3, UI_COLOR_PRIMARY_BLUE);
+    }
+  }
+}
+
+/// Status dot colors
+typedef enum {
+  STATUS_ACTIVE = 0,    // Green
+  STATUS_STANDBY = 1,   // Yellow
+  STATUS_ERROR = 2      // Red
+} StatusType;
+
+/// Draw a status indicator dot
+/// @param x X position (center)
+/// @param y Y position (center)
+/// @param radius Radius of dot
+/// @param status Status type (determines color)
+static void draw_status_dot(int x, int y, int radius, StatusType status) {
+  uint32_t color;
+  switch (status) {
+    case STATUS_ACTIVE:
+      color = RGBA8(0x2D, 0x8A, 0x3E, 255); // Green
+      break;
+    case STATUS_STANDBY:
+      color = RGBA8(0xD9, 0x77, 0x06, 255); // Orange/Yellow
+      break;
+    case STATUS_ERROR:
+      color = RGBA8(0xDC, 0x26, 0x26, 255); // Red
+      break;
+    default:
+      color = RGBA8(0x80, 0x80, 0x80, 255); // Gray
+  }
+
+  draw_circle(x, y, radius, color);
+}
+
 // Particle system functions
 
 /// Initialize particle system with random positions and velocities
@@ -263,9 +417,9 @@ void init_particles() {
 
   for (int i = 0; i < PARTICLE_COUNT; i++) {
     particles[i].x = (float)(rand() % VITA_WIDTH);
-    particles[i].y = (float)(rand() % VITA_HEIGHT);
+    particles[i].y = -(float)(rand() % 200);  // Start above screen (0 to -200)
     particles[i].vx = ((float)(rand() % 100) / 100.0f - 0.5f) * 0.5f;  // Slight horizontal drift
-    particles[i].vy = -((float)(rand() % 100) / 100.0f + 0.5f) * 0.8f; // Upward (negative Y)
+    particles[i].vy = ((float)(rand() % 100) / 100.0f + 0.3f) * 1.2f;  // Downward (positive Y, gravity)
     particles[i].scale = 0.15f + ((float)(rand() % 100) / 100.0f) * 0.25f;
     particles[i].rotation = (float)(rand() % 360);
     particles[i].rotation_speed = ((float)(rand() % 100) / 100.0f - 0.5f) * 2.0f;
@@ -296,15 +450,18 @@ void update_particles() {
     particles[i].y += particles[i].vy;
     particles[i].rotation += particles[i].rotation_speed;
 
-    // Wrap around screen edges
-    if (particles[i].y < -50) {
-      particles[i].y = VITA_HEIGHT + 50;  // Respawn at bottom
+    // Wrap around screen edges (respawn at top when falling off bottom)
+    if (particles[i].y > VITA_HEIGHT + 50) {
+      particles[i].y = -(float)(rand() % 100);  // Respawn at top
       particles[i].x = (float)(rand() % VITA_WIDTH);
     }
     if (particles[i].x < -50) particles[i].x = VITA_WIDTH + 50;
     if (particles[i].x > VITA_WIDTH + 50) particles[i].x = -50;
   }
 }
+
+// Forward declarations
+void draw_play_icon(int center_x, int center_y, int size);
 
 /// Render all active particles
 void render_particles() {
@@ -346,29 +503,34 @@ void render_wave_navigation() {
     icon_play, icon_settings, icon_controller, icon_profile
   };
 
-  // Draw navigation icons with wave animation
-  wave_animation_time += 0.05f;  // Update animation
+  // Draw navigation icons (static, no animation)
+  // TODO: Add wave background animation in future update
 
   for (int i = 0; i < 4; i++) {
-    if (!nav_icons[i]) continue;
-
     int y = WAVE_NAV_ICON_START_Y + (i * WAVE_NAV_ICON_SPACING);
-    float wave_offset = sinf(wave_animation_time + i * 0.5f) * 3.0f;
 
-    // Selection highlight (PlayStation Blue circle)
-    if (i == selected_nav_icon) {
-      draw_circle(WAVE_NAV_ICON_X, y + wave_offset, 28, UI_COLOR_PRIMARY_BLUE);
+    // Selection highlight (PlayStation Blue circle) - only show if nav bar has focus
+    if (i == selected_nav_icon && current_focus == FOCUS_NAV_BAR) {
+      draw_circle(WAVE_NAV_ICON_X, y, 28, UI_COLOR_PRIMARY_BLUE);
     }
 
-    // Draw icon (centered at WAVE_NAV_ICON_X, y + wave_offset)
-    int icon_w = vita2d_texture_get_width(nav_icons[i]);
-    int icon_h = vita2d_texture_get_height(nav_icons[i]);
-    float scale = (float)WAVE_NAV_ICON_SIZE / (float)(icon_w > icon_h ? icon_w : icon_h);
+    // Draw icon (centered at WAVE_NAV_ICON_X, y) - STATIC position
+    if (i == 0) {
+      // First icon: Draw white triangle play icon instead of texture
+      draw_play_icon(WAVE_NAV_ICON_X, y, WAVE_NAV_ICON_SIZE);
+    } else {
+      // Other icons: Draw from textures
+      if (!nav_icons[i]) continue;
 
-    vita2d_draw_texture_scale(nav_icons[i],
-      WAVE_NAV_ICON_X - (icon_w * scale / 2.0f),
-      y + wave_offset - (icon_h * scale / 2.0f),
-      scale, scale);
+      int icon_w = vita2d_texture_get_width(nav_icons[i]);
+      int icon_h = vita2d_texture_get_height(nav_icons[i]);
+      float scale = (float)WAVE_NAV_ICON_SIZE / (float)(icon_w > icon_h ? icon_w : icon_h);
+
+      vita2d_draw_texture_scale(nav_icons[i],
+        WAVE_NAV_ICON_X - (icon_w * scale / 2.0f),
+        y - (icon_h * scale / 2.0f),
+        scale, scale);
+    }
   }
 }
 
@@ -505,16 +667,46 @@ void render_console_grid() {
     int card_x = content_area_x - (CONSOLE_CARD_WIDTH / 2);
     int card_y = CONSOLE_CARD_START_Y + (i * CONSOLE_CARD_SPACING);
 
-    bool selected = (i == selected_console_index);
+    // Only show selection highlight if console cards have focus
+    bool selected = (i == selected_console_index && current_focus == FOCUS_CONSOLE_CARDS);
     render_console_card(&cards[i], card_x, card_y, selected);
   }
 
   // "Add New" button at bottom
   if (button_add_new) {
     int btn_w = vita2d_texture_get_width(button_add_new);
+    int btn_h = vita2d_texture_get_height(button_add_new);
     int btn_x = content_area_x - (btn_w / 2);
     int btn_y = CONSOLE_CARD_START_Y + (num_hosts * CONSOLE_CARD_SPACING) + 20;
+
+    // Draw selection highlight if Add New button is selected
+    if (add_new_button_selected) {
+      int highlight_padding = 4;
+      vita2d_draw_rectangle(btn_x - highlight_padding, btn_y - highlight_padding,
+                            btn_w + (highlight_padding * 2), btn_h + (highlight_padding * 2),
+                            UI_COLOR_PRIMARY_BLUE);
+    }
+
     vita2d_draw_texture(button_add_new, btn_x, btn_y);
+  }
+}
+
+/// Draw a simple white filled triangle play icon (pointing right)
+void draw_play_icon(int center_x, int center_y, int size) {
+  uint32_t white = RGBA8(255, 255, 255, 255);
+  int half_size = size / 2;
+
+  // Draw filled triangle using horizontal lines
+  // Triangle points: left (center_x - half_size, center_y),
+  //                  top-right (center_x + half_size, center_y - half_size)
+  //                  bottom-right (center_x + half_size, center_y + half_size)
+  for (int y = -half_size; y <= half_size; y++) {
+    int x_start = center_x - half_size + abs(y);  // Left edge moves right as we go away from center
+    int x_end = center_x + half_size;              // Right edge is fixed
+    int width = x_end - x_start;
+    if (width > 0) {
+      vita2d_draw_rectangle(x_start, center_y + y, width, 1, white);
+    }
   }
 }
 
@@ -596,13 +788,12 @@ UIScreenType handle_vitarps5_touch_input(int num_hosts) {
     float touch_x = (touch.report[0].x / 1920.0f) * 960.0f;
     float touch_y = (touch.report[0].y / 1088.0f) * 544.0f;
 
-    // Check wave navigation icons (circular hitboxes)
+    // Check wave navigation icons (circular hitboxes - static positions)
     for (int i = 0; i < 4; i++) {
       int icon_x = WAVE_NAV_ICON_X;
       int icon_y = WAVE_NAV_ICON_START_Y + (i * WAVE_NAV_ICON_SPACING);
-      float wave_offset = sinf(wave_animation_time + i * 0.5f) * 3.0f;
 
-      if (is_point_in_circle(touch_x, touch_y, icon_x, icon_y + wave_offset, 30)) {
+      if (is_point_in_circle(touch_x, touch_y, icon_x, icon_y, 30)) {
         selected_nav_icon = i;
         // Navigate to screen based on icon
         switch (i) {
@@ -1120,47 +1311,88 @@ UIScreenType draw_main_menu() {
   // Render VitaRPS5 wave navigation sidebar
   render_wave_navigation();
 
-  // Handle wave navigation input (L1/R1 to cycle through nav items)
-  if (btn_pressed(SCE_CTRL_LTRIGGER)) {
-    selected_nav_icon = (selected_nav_icon - 1 + 4) % 4;
-  } else if (btn_pressed(SCE_CTRL_RTRIGGER)) {
-    selected_nav_icon = (selected_nav_icon + 1) % 4;
-  }
-
-  // Handle navigation selection with Triangle
-  UIScreenType next_screen = UI_SCREEN_TYPE_MAIN;
-  if (btn_pressed(SCE_CTRL_TRIANGLE)) {
-    switch (selected_nav_icon) {
-      case 0: next_screen = UI_SCREEN_TYPE_MAIN; break;       // Play
-      case 1: next_screen = UI_SCREEN_TYPE_SETTINGS; break;   // Settings
-      case 2: next_screen = UI_SCREEN_TYPE_REGISTER_HOST; break;  // Controller (placeholder)
-      case 3: next_screen = UI_SCREEN_TYPE_REGISTER_HOST; break;  // Profile (placeholder)
-    }
-  }
-
-  if (next_screen != UI_SCREEN_TYPE_MAIN) {
-    return next_screen;
-  }
-
   // Render VitaRPS5 console cards instead of host tiles
   render_console_grid();
 
-  // Handle console card navigation (Up/Down to select cards)
+  // Count hosts
   int num_hosts = 0;
   for (int i = 0; i < MAX_NUM_HOSTS; i++) {
     if (context.hosts[i]) num_hosts++;
   }
 
-  if (num_hosts > 0) {
-    if (btn_pressed(SCE_CTRL_UP)) {
-      selected_console_index = (selected_console_index - 1 + num_hosts) % num_hosts;
-    } else if (btn_pressed(SCE_CTRL_DOWN)) {
-      selected_console_index = (selected_console_index + 1) % num_hosts;
-    }
+  UIScreenType next_screen = UI_SCREEN_TYPE_MAIN;
 
-    // Handle card actions (Cross to connect, Square to wake)
-    if (btn_pressed(SCE_CTRL_CROSS) || btn_pressed(SCE_CTRL_CIRCLE)) {
-      // Set active host from selected card
+  // === D-PAD NAVIGATION (moves between ALL UI elements) ===
+
+  if (btn_pressed(SCE_CTRL_UP)) {
+    if (current_focus == FOCUS_NAV_BAR) {
+      // Move up within nav bar
+      selected_nav_icon = (selected_nav_icon - 1 + 4) % 4;
+    } else if (current_focus == FOCUS_CONSOLE_CARDS && num_hosts > 0) {
+      // Move up within console cards
+      selected_console_index = (selected_console_index - 1 + num_hosts) % num_hosts;
+    } else if (current_focus == FOCUS_ADD_NEW) {
+      if (num_hosts > 0) {
+        // Move up from Add New to last console
+        current_focus = FOCUS_CONSOLE_CARDS;
+        selected_console_index = num_hosts - 1;
+      } else {
+        // No hosts - move back to console cards area (which will have no selection)
+        current_focus = FOCUS_CONSOLE_CARDS;
+      }
+    }
+  } else if (btn_pressed(SCE_CTRL_DOWN)) {
+    if (current_focus == FOCUS_NAV_BAR) {
+      // Move down within nav bar
+      selected_nav_icon = (selected_nav_icon + 1) % 4;
+    } else if (current_focus == FOCUS_CONSOLE_CARDS) {
+      if (num_hosts > 0) {
+        if (selected_console_index == num_hosts - 1) {
+          // Move down from last console to Add New
+          current_focus = FOCUS_ADD_NEW;
+        } else {
+          // Move down within console cards
+          selected_console_index = (selected_console_index + 1) % num_hosts;
+        }
+      } else {
+        // No hosts - move to Add New button
+        current_focus = FOCUS_ADD_NEW;
+      }
+    }
+  } else if (btn_pressed(SCE_CTRL_LEFT)) {
+    if (current_focus == FOCUS_CONSOLE_CARDS || current_focus == FOCUS_ADD_NEW) {
+      // Move left to nav bar
+      last_console_selection = selected_console_index;
+      current_focus = FOCUS_NAV_BAR;
+    }
+  } else if (btn_pressed(SCE_CTRL_RIGHT)) {
+    if (current_focus == FOCUS_NAV_BAR) {
+      // Move right from nav bar to console cards
+      if (num_hosts > 0) {
+        current_focus = FOCUS_CONSOLE_CARDS;
+        selected_console_index = last_console_selection;
+      } else {
+        current_focus = FOCUS_ADD_NEW;
+      }
+    }
+  }
+
+  // Update visual selection states based on focus
+  add_new_button_selected = (current_focus == FOCUS_ADD_NEW);
+
+  // === X BUTTON (Activate/Select highlighted element) ===
+
+  if (btn_pressed(SCE_CTRL_CROSS)) {
+    if (current_focus == FOCUS_NAV_BAR) {
+      // Activate nav bar icon - switch screen
+      switch (selected_nav_icon) {
+        case 0: next_screen = UI_SCREEN_TYPE_MAIN; break;       // Play
+        case 1: next_screen = UI_SCREEN_TYPE_SETTINGS; break;   // Settings
+        case 2: next_screen = UI_SCREEN_TYPE_REGISTER_HOST; break;  // Controller
+        case 3: next_screen = UI_SCREEN_TYPE_REGISTER_HOST; break;  // Profile
+      }
+    } else if (current_focus == FOCUS_CONSOLE_CARDS && num_hosts > 0) {
+      // Connect to selected console
       int host_idx = 0;
       for (int i = 0; i < MAX_NUM_HOSTS; i++) {
         if (context.hosts[i]) {
@@ -1185,28 +1417,39 @@ UIScreenType draw_main_menu() {
           host_idx++;
         }
       }
-    } else if (btn_pressed(SCE_CTRL_SQUARE)) {
-      // Wake selected console
-      int host_idx = 0;
-      for (int i = 0; i < MAX_NUM_HOSTS; i++) {
-        if (context.hosts[i]) {
-          if (host_idx == selected_console_index) {
-            host_wakeup(context.hosts[i]);
-            break;
-          }
-          host_idx++;
-        }
+    } else if (current_focus == FOCUS_ADD_NEW) {
+      // Activate Add New button - start discovery
+      if (!context.discovery_enabled) {
+        start_discovery(NULL, NULL);
       }
     }
-  } else {
-    // No hosts - show empty state message
-    int msg_x = WAVE_NAV_WIDTH + ((VITA_WIDTH - WAVE_NAV_WIDTH) / 2) - 200;
-    vita2d_font_draw_text(font, msg_x, VITA_HEIGHT / 2, UI_COLOR_TEXT_SECONDARY, 20,
-      "No consoles found. Press Start to discover.");
   }
 
-  // Handle "Add New" button (Start button to trigger discovery)
-  if (btn_pressed(SCE_CTRL_START)) {
+  // === OTHER BUTTONS ===
+
+  // Square: Wake selected console (only works on console cards)
+  if (btn_pressed(SCE_CTRL_SQUARE) && current_focus == FOCUS_CONSOLE_CARDS && num_hosts > 0) {
+    int host_idx = 0;
+    for (int i = 0; i < MAX_NUM_HOSTS; i++) {
+      if (context.hosts[i]) {
+        if (host_idx == selected_console_index) {
+          host_wakeup(context.hosts[i]);
+          break;
+        }
+        host_idx++;
+      }
+    }
+  }
+
+  // Empty state message
+  if (num_hosts == 0) {
+    int msg_x = WAVE_NAV_WIDTH + ((VITA_WIDTH - WAVE_NAV_WIDTH) / 2) - 200;
+    vita2d_font_draw_text(font, msg_x, VITA_HEIGHT / 2, UI_COLOR_TEXT_SECONDARY, 20,
+      "No consoles found. Press Triangle to discover.");
+  }
+
+  // Triangle: Trigger discovery
+  if (btn_pressed(SCE_CTRL_TRIANGLE)) {
     if (!context.discovery_enabled) {
       start_discovery(NULL, NULL);
     }
@@ -1222,7 +1465,7 @@ UIScreenType draw_main_menu() {
   int hint_y = VITA_HEIGHT - 25;
   int hint_x = WAVE_NAV_WIDTH + 20;
   vita2d_font_draw_text(font, hint_x, hint_y, UI_COLOR_TEXT_TERTIARY, 16,
-    "L1/R1: Nav | Up/Down: Select | Cross: Connect | Square: Wake | Start: Discover");
+    "D-Pad: Navigate | X: Select/OK | Square: Wake | Triangle: Discover");
 
 
   return next_screen;
@@ -1359,7 +1602,7 @@ bool draw_registration_dialog() {
     LINK_CODE = link_code;
   }
 
-  if (btn_pressed(SCE_CTRL_TRIANGLE)) {
+  if (btn_pressed(SCE_CTRL_CROSS)) {
     if (LINK_CODE >= 0) {
       LOGD("User input link code: %d", LINK_CODE);
       host_register(context.active_host, LINK_CODE);
@@ -1367,7 +1610,7 @@ bool draw_registration_dialog() {
       LOGD("User exited registration screen without inputting link code");
     }
   }
-  if (btn_pressed(SCE_CTRL_CANCEL) || btn_pressed(SCE_CTRL_TRIANGLE)) {
+  if (btn_pressed(SCE_CTRL_CIRCLE) || btn_pressed(SCE_CTRL_CROSS)) {
     LINK_CODE = -1;
     context.ui_state.next_active_item = UI_MAIN_WIDGET_SETTINGS_BTN;
     return false;
@@ -1521,7 +1764,7 @@ bool draw_add_host_dialog() {
   }
 
   // save (if pos)
-  if (btn_pressed(SCE_CTRL_TRIANGLE)) {
+  if (btn_pressed(SCE_CTRL_CROSS)) {
     if ((REMOTEIP != NULL) && (strlen(REMOTEIP) != 0)) {
       if ((CONSOLENUM >= 0) && (CONSOLENUM < context.config.num_registered_hosts)) {
         VitaChiakiHost* rhost = context.config.registered_hosts[CONSOLENUM];
@@ -1686,6 +1929,11 @@ void init_ui() {
   font = vita2d_load_font_file("app0:/assets/fonts/Roboto-Regular.ttf");
   font_mono = vita2d_load_font_file("app0:/assets/fonts/RobotoMono-Regular.ttf");
   vita2d_set_vblank_wait(true);
+
+  // Initialize touch screen
+  sceTouchSetSamplingState(SCE_TOUCH_PORT_FRONT, SCE_TOUCH_SAMPLING_STATE_START);
+  sceTouchSetSamplingState(SCE_TOUCH_PORT_BACK, SCE_TOUCH_SAMPLING_STATE_START);
+  sceTouchEnableTouchForce(SCE_TOUCH_PORT_FRONT);
 
   // Set yes/no buttons (circle = yes on Japanese vitas, typically)
   SCE_CTRL_CONFIRM = context.config.circle_btn_confirm ? SCE_CTRL_CIRCLE : SCE_CTRL_CROSS;
