@@ -36,6 +36,12 @@
 #define UI_COLOR_ACCENT_PURPLE 0xFFB0279C       // Accent Purple #9C27B0
 #define UI_COLOR_SHADOW 0x3C000000           // Semi-transparent black for shadows
 
+// Particle colors (ABGR with alpha for transparency)
+#define PARTICLE_COLOR_RED    0x80FF5555  // Semi-transparent red
+#define PARTICLE_COLOR_GREEN  0x8055FF55  // Semi-transparent green
+#define PARTICLE_COLOR_BLUE   0x805555FF  // Semi-transparent blue
+#define PARTICLE_COLOR_ORANGE 0x8055AAFF  // Semi-transparent orange
+
 #define VITA_WIDTH 960
 #define VITA_HEIGHT 544
 
@@ -100,6 +106,16 @@ vita2d_texture *btn_register, *btn_register_active, *btn_add, *btn_add_active,
     *btn_messages, *btn_messages_active, *img_ps4,
     *img_ps4_off, *img_ps4_rest, *img_ps5, *img_ps5_off, *img_ps5_rest,
     *img_header, *img_discovery_host;
+
+// VitaRPS5 UI textures
+vita2d_texture *symbol_triangle, *symbol_circle, *symbol_ex, *symbol_square;
+vita2d_texture *wave_top, *wave_bottom;
+vita2d_texture *ellipse_green, *ellipse_yellow, *ellipse_red;
+vita2d_texture *button_add_new, *console_card_bg;
+
+// Particle system state
+static Particle particles[PARTICLE_COUNT];
+static bool particles_initialized = false;
 
 #define MAX_TOOLTIP_CHARS 200
 char active_tile_tooltip_msg[MAX_TOOLTIP_CHARS] = {0};
@@ -207,6 +223,84 @@ static void draw_card_with_shadow(int x, int y, int width, int height, int radiu
   draw_rounded_rectangle(x, y, width, height, radius, color);
 }
 
+// Particle system functions
+
+/// Initialize particle system with random positions and velocities
+void init_particles() {
+  if (particles_initialized) return;
+
+  srand((unsigned int)sceKernelGetProcessTimeWide());
+
+  for (int i = 0; i < PARTICLE_COUNT; i++) {
+    particles[i].x = (float)(rand() % VITA_WIDTH);
+    particles[i].y = (float)(rand() % VITA_HEIGHT);
+    particles[i].vx = ((float)(rand() % 100) / 100.0f - 0.5f) * 0.5f;  // Slight horizontal drift
+    particles[i].vy = -((float)(rand() % 100) / 100.0f + 0.5f) * 0.8f; // Upward (negative Y)
+    particles[i].scale = 0.15f + ((float)(rand() % 100) / 100.0f) * 0.25f;
+    particles[i].rotation = (float)(rand() % 360);
+    particles[i].rotation_speed = ((float)(rand() % 100) / 100.0f - 0.5f) * 2.0f;
+    particles[i].symbol_type = rand() % 4;
+
+    // Assign color based on symbol
+    switch (particles[i].symbol_type) {
+      case 0: particles[i].color = PARTICLE_COLOR_RED; break;
+      case 1: particles[i].color = PARTICLE_COLOR_BLUE; break;
+      case 2: particles[i].color = PARTICLE_COLOR_GREEN; break;
+      case 3: particles[i].color = PARTICLE_COLOR_ORANGE; break;
+    }
+    particles[i].active = true;
+  }
+
+  particles_initialized = true;
+}
+
+/// Update particle positions and rotation
+void update_particles() {
+  if (!particles_initialized) return;
+
+  for (int i = 0; i < PARTICLE_COUNT; i++) {
+    if (!particles[i].active) continue;
+
+    // Update position
+    particles[i].x += particles[i].vx;
+    particles[i].y += particles[i].vy;
+    particles[i].rotation += particles[i].rotation_speed;
+
+    // Wrap around screen edges
+    if (particles[i].y < -50) {
+      particles[i].y = VITA_HEIGHT + 50;  // Respawn at bottom
+      particles[i].x = (float)(rand() % VITA_WIDTH);
+    }
+    if (particles[i].x < -50) particles[i].x = VITA_WIDTH + 50;
+    if (particles[i].x > VITA_WIDTH + 50) particles[i].x = -50;
+  }
+}
+
+/// Render all active particles
+void render_particles() {
+  if (!particles_initialized) return;
+
+  vita2d_texture* symbol_textures[4] = {
+    symbol_triangle, symbol_circle, symbol_ex, symbol_square
+  };
+
+  for (int i = 0; i < PARTICLE_COUNT; i++) {
+    if (!particles[i].active) continue;
+
+    vita2d_texture* tex = symbol_textures[particles[i].symbol_type];
+    if (!tex) continue;
+
+    // Draw with scale and rotation
+    vita2d_draw_texture_scale_rotate(tex,
+      particles[i].x, particles[i].y,
+      particles[i].scale, particles[i].scale,
+      particles[i].rotation);
+
+    // Note: Color tinting would require custom shader
+    // For now particles use texture colors
+  }
+}
+
 /// Load all textures required for rendering the UI
 void load_textures() {
   btn_add = vita2d_load_PNG_file(BTN_ADD_PATH);
@@ -230,6 +324,19 @@ void load_textures() {
   img_ps5_off = vita2d_load_PNG_file(IMG_PS5_OFF_PATH);
   img_ps5_rest = vita2d_load_PNG_file(IMG_PS5_REST_PATH);
   img_discovery_host = vita2d_load_PNG_file(IMG_DISCOVERY_HOST);
+
+  // Load VitaRPS5 UI assets
+  symbol_triangle = vita2d_load_PNG_file("app0:/assets/vitarps5/symbol_triangle.png");
+  symbol_circle = vita2d_load_PNG_file("app0:/assets/vitarps5/symbol_circle.png");
+  symbol_ex = vita2d_load_PNG_file("app0:/assets/vitarps5/symbol_ex.png");
+  symbol_square = vita2d_load_PNG_file("app0:/assets/vitarps5/symbol_square.png");
+  wave_top = vita2d_load_PNG_file("app0:/assets/vitarps5/wave_top.png");
+  wave_bottom = vita2d_load_PNG_file("app0:/assets/vitarps5/wave_bottom.png");
+  ellipse_green = vita2d_load_PNG_file("app0:/assets/vitarps5/ellipse_green.png");
+  ellipse_yellow = vita2d_load_PNG_file("app0:/assets/vitarps5/ellipse_yellow.png");
+  ellipse_red = vita2d_load_PNG_file("app0:/assets/vitarps5/ellipse_red.png");
+  button_add_new = vita2d_load_PNG_file("app0:/assets/vitarps5/button_add_new.png");
+  console_card_bg = vita2d_load_PNG_file("app0:/assets/vitarps5/console_card.png");
 }
 
 /// Check if a given region is touched on the front touch screen
@@ -682,6 +789,10 @@ UIScreenType draw_header_bar() {
 /// Draw the main menu screen with the list of hosts and header bar
 /// @return the screen to draw during the next cycle
 UIScreenType draw_main_menu() {
+  // Update and render VitaRPS5 particle background
+  update_particles();
+  render_particles();
+
   UIScreenType next_screen = draw_header_bar();
 
   int host_slots = 0;
@@ -1207,6 +1318,7 @@ void init_ui() {
   vita2d_init();
   vita2d_set_clear_color(RGBA8(0x40, 0x40, 0x40, 0xFF));
   load_textures();
+  init_particles();  // Initialize VitaRPS5 particle background
   font = vita2d_load_font_file("app0:/assets/fonts/Roboto-Regular.ttf");
   font_mono = vita2d_load_font_file("app0:/assets/fonts/RobotoMono-Regular.ttf");
   vita2d_set_vblank_wait(true);

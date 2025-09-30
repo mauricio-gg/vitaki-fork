@@ -116,5 +116,17 @@ if(CHIAKI_IS_VITA)
         FILE res/assets/ps5_rest.png assets/ps5_rest.png
         FILE res/assets/fonts/Roboto-Regular.ttf assets/fonts/Roboto-Regular.ttf
         FILE res/assets/fonts/RobotoMono-Regular.ttf assets/fonts/RobotoMono-Regular.ttf
+        # VitaRPS5 UI Assets
+        FILE res/assets/vitarps5/user_provided/modern_assets/symbol_triangle.png assets/vitarps5/symbol_triangle.png
+        FILE res/assets/vitarps5/user_provided/modern_assets/symbol_circle.png assets/vitarps5/symbol_circle.png
+        FILE res/assets/vitarps5/user_provided/modern_assets/symbol_ex.png assets/vitarps5/symbol_ex.png
+        FILE res/assets/vitarps5/user_provided/modern_assets/symbol_square.png assets/vitarps5/symbol_square.png
+        FILE res/assets/vitarps5/user_provided/modern_assets/wave_top.png assets/vitarps5/wave_top.png
+        FILE res/assets/vitarps5/user_provided/modern_assets/wave_bottom.png assets/vitarps5/wave_bottom.png
+        FILE res/assets/vitarps5/user_provided/modern_assets/ellipse_green.png assets/vitarps5/ellipse_green.png
+        FILE res/assets/vitarps5/user_provided/modern_assets/ellipse_yellow.png assets/vitarps5/ellipse_yellow.png
+        FILE res/assets/vitarps5/user_provided/modern_assets/ellipse_red.png assets/vitarps5/ellipse_red.png
+        FILE res/assets/vitarps5/user_provided/modern_assets/button_add_new.png assets/vitarps5/button_add_new.png
+        FILE res/assets/vitarps5/user_provided/modern_assets/console_card.png assets/vitarps5/console_card.png
     )
 endif()
