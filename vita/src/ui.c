@@ -2349,41 +2349,53 @@ char* LINK_CODE_LABEL = "Registration code";
 /// Draw the form to register a host
 /// @return whether the dialog should keep rendering
 bool draw_registration_dialog() {
-  // Modern registration card
-  int card_x = 80;
-  int card_y = 80;
-  int card_w = 800;
-  int card_h = 380;
+  // VitaRPS5-style clean registration card (centered on screen)
+  int card_w = 700;
+  int card_h = 450;
+  int card_x = (VITA_WIDTH - card_w) / 2;
+  int card_y = (VITA_HEIGHT - card_h) / 2;
+
   draw_card_with_shadow(card_x, card_y, card_w, card_h, 12, UI_COLOR_CARD_BG);
 
   // Title
-  vita2d_font_draw_text(font, card_x + 30, card_y + 50, UI_COLOR_TEXT_PRIMARY, 28,
-                        "Register Console");
+  vita2d_font_draw_text(font, card_x + 20, card_y + 50, UI_COLOR_TEXT_PRIMARY, 28,
+                        "PS5 Console Registration");
 
-  // Draw instructions with modern styling
-  int info_font_size = 20;
-  int info_x = card_x + 30;
-  int info_y = card_y + 120;
-  int info_y_delta = 28;
-  vita2d_font_draw_text(font, info_x, info_y, UI_COLOR_TEXT_SECONDARY, info_font_size,
-                        "On your PS console, go to Settings > System > Remote Play and select Pair Device,"
-                        );
-  vita2d_font_draw_text(font, info_x, info_y + info_y_delta, UI_COLOR_TEXT_SECONDARY, info_font_size,
-                        "then enter the corresponding 8-digit code here (no spaces)."
-                        );
+  // Console info (name and IP)
+  if (context.active_host) {
+    char console_info[128];
+    const char* host_name = context.active_host->hostname ? context.active_host->hostname : "Unknown";
+    const char* host_ip = NULL;
 
-  // Instructions at bottom
-  int font_size = 18;
-  int tooltip_x = 10;
-  int tooltip_y = VITA_HEIGHT - font_size;
-  vita2d_font_draw_textf(font, tooltip_x, tooltip_y, UI_COLOR_TEXT_TERTIARY, font_size,
-                         "Triangle: Register (clear any current registration);  %s: Exit without registering.", cancel_btn_str
-                        );
+    // Get IP from discovery or registered state
+    if (context.active_host->discovery_state && context.active_host->discovery_state->host_addr) {
+      host_ip = context.active_host->discovery_state->host_addr;
+    } else if (context.active_host->registered_state && context.active_host->registered_state->ap_ssid) {
+      host_ip = context.active_host->registered_state->ap_ssid;  // Fallback to registered info
+    }
 
-  long int link_code = number_input(UI_MAIN_WIDGET_TEXT_INPUT | 0, 30, 30, 600, 80, LINK_CODE_LABEL, LINK_CODE);
+    if (host_ip) {
+      snprintf(console_info, sizeof(console_info), "Console: %s (%s)", host_name, host_ip);
+    } else {
+      snprintf(console_info, sizeof(console_info), "Console: %s", host_name);
+    }
+    vita2d_font_draw_text(font, card_x + 20, card_y + 100, UI_COLOR_TEXT_SECONDARY, 20, console_info);
+  }
+
+  // Simple instructions (minimal and clean)
+  vita2d_font_draw_text(font, card_x + 20, card_y + 150, UI_COLOR_TEXT_PRIMARY, 20,
+                        "Enter the 8-digit session PIN displayed on your PS5:");
+
+  // PIN input area (centered in card, below instructions)
+  int pin_input_y = card_y + 220;
+  long int link_code = number_input(UI_MAIN_WIDGET_TEXT_INPUT | 0, card_x + 20, pin_input_y, card_w - 40, 70, NULL, LINK_CODE);
   if (link_code >= 0) {
     LINK_CODE = link_code;
   }
+
+  // Navigation hints at bottom of card (clean and simple)
+  vita2d_font_draw_text(font, card_x + 20, card_y + card_h - 50, UI_COLOR_TEXT_SECONDARY, 18,
+                        "X: Confirm PIN     Triangle: Cancel");
 
   if (btn_pressed(SCE_CTRL_CROSS)) {
     if (LINK_CODE >= 0) {
