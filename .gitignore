@@ -62,3 +62,6 @@ profile.json
 # Documentation artifacts
 docs/*.md
 !docs/ai/*.md
+
+# Old project directories
+vitarps5/
