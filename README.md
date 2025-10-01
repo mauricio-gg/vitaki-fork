@@ -1,8 +1,44 @@
-# Vitaki fork
+# VitaRPS5 (Vitaki Fork)
 
-This is ywnico's fork of AAGaming's ([@AAGaming00](https://github.com/AAGaming00)) [Vitaki](https://git.catvibers.me/aa/chiaki). AAGaming did all the hard work of porting Chiaki to Vita. This fork just adds some features and fixes on top of that foundation.
+This is a fork built on top of [@ywnico](https://github.com/ywnico)'s excellent [vitaki-fork](https://github.com/ywnico/vitaki-fork), which itself is based on [@AAGaming00](https://github.com/AAGaming00)'s [Vitaki](https://git.catvibers.me/aa/chiaki).
 
-This fork builds on AAGaming's work with the following updates:
+**Credit where it's due:** ywnico did the vast majority of the hard work, implementing audio, controls, external network support, wakeup functionality, and numerous critical fixes. AAGaming did the foundational work of porting Chiaki to PS Vita. This fork simply adds UI enhancements and quality-of-life improvements on top of their solid foundation.
+
+## Support This Project
+
+This fork has been a labor of love for the PS Vita community, developed over 3+ months across several design iterations (we even had to start over at one point!). If you enjoy the UI enhancements and improvements, consider buying me a coffee to support continued development. More enhancements are coming!
+
+☕ [Buy Me a Coffee](https://buymeacoffee.com/solidem)
+
+## What's New in This Fork
+
+This fork adds the following enhancements to ywnico's vitaki-fork:
+
+1. **VitaRPS5-Style UI Redesign**
+   - Modern card-based console selection interface
+   - Professional PlayStation-themed color scheme
+   - Redesigned PIN entry screen with individual digit display
+   - Improved visual feedback and animations
+
+2. **Enhanced Console Wake Flow**
+   - "Waking up console..." screen with animated progress
+   - 30-second timeout with visual countdown
+   - Automatic streaming start when console wakes up
+   - No need to press X twice
+
+3. **Fixed Controller Input Issues**
+   - Resolved race condition that prevented controller input during streaming
+   - Properly separated UI and input thread buffer access
+   - Controllers now work reliably during remote play
+
+4. **Improved Console Management**
+   - Re-pairing now properly deletes registration data from storage
+   - Better console name and IP display formatting
+   - Circle button for cancel (PlayStation convention)
+
+## Features from ywnico's vitaki-fork
+
+All the features from ywnico's fork are included:
 1. Implemented audio
 2. Implemented controls
     - Control mappings for L2, R2, L3, R3, and touchpad (trapezoid button), following the official ps4 remote play maps in `vs0:app/NPXS10013/keymap/`. Note that `Select` + `Start` sends the PS (home) button.
@@ -16,6 +52,38 @@ This fork builds on AAGaming's work with the following updates:
 8. Merged in updates from chiaki4deck (improved some connection issues)
 9. Included [ghost's LiveArea icon fixes](https://git.catvibers.me/aa/chiaki/pulls/13)
 10. Many bug and crash fixes
+
+## Building from Source
+
+This project uses Docker for consistent builds across all platforms. The build script handles all Docker operations automatically.
+
+### Prerequisites
+- Docker installed and running
+- Git (to clone the repository)
+
+### Build Instructions
+
+```bash
+# Clone the repository
+git clone https://github.com/mauricio-gg/vitaki-fork.git
+cd vitaki-fork
+
+# Release build (creates VPK in vita/build/)
+./tools/build.sh
+
+# Debug build (includes debug symbols and logging)
+./tools/build.sh debug
+
+# Open development shell (for advanced usage)
+./tools/build.sh shell
+
+# Run tests
+./tools/build.sh test
+```
+
+The VPK file will be created in `vita/build/` and is ready to install on your PS Vita.
+
+**Note:** Always use the build script - never call Docker manually. The script ensures the correct Docker image and build environment.
 
 ## Instructions
 ### Local connection
@@ -82,7 +150,10 @@ extremely helpful information about FEC and error correction.
 
 ## About
 
-Created by Florian Märkl
+Originally created by Florian Märkl
+Ported to PS Vita by AAGaming
+Enhanced by ywnico
+Augmented by solidEm with the help of [Claude Code](https://claude.com/claude-code)
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License version 3
