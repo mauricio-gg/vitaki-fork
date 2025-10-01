@@ -146,17 +146,7 @@ typedef struct {
 static ConsoleCardCache card_cache = {0};
 #define CARD_CACHE_UPDATE_INTERVAL_US (10 * 1000000)  // 10 seconds in microseconds
 
-// Wave parallax animation state
-#define WAVE_LAYER_COUNT 3
-typedef struct {
-  float offset_x;        // Current horizontal scroll offset
-  float speed;           // Pixels per frame
-  float y_position;      // Vertical position
-  float alpha;           // Transparency (0.0-1.0)
-} WaveLayer;
-
-static WaveLayer wave_layers[WAVE_LAYER_COUNT] = {0};
-static bool wave_animation_initialized = false;
+// Wave navigation sidebar uses simple colored bar (no animation)
 
 // PIN entry state for VitaRPS5-style registration
 typedef struct {
@@ -504,84 +494,12 @@ void render_particles() {
   }
 }
 
-/// Initialize wave parallax animation layers
-void init_wave_animation() {
-  if (wave_animation_initialized) return;
-
-  // Layer 0: Background layer (slowest, most transparent)
-  wave_layers[0].offset_x = 0.0f;
-  wave_layers[0].speed = 0.2f;
-  wave_layers[0].y_position = 0.0f;
-  wave_layers[0].alpha = 0.3f;
-
-  // Layer 1: Middle layer (medium speed, medium transparency)
-  wave_layers[1].offset_x = 0.0f;
-  wave_layers[1].speed = 0.5f;
-  wave_layers[1].y_position = VITA_HEIGHT * 0.25f;
-  wave_layers[1].alpha = 0.5f;
-
-  // Layer 2: Foreground layer (fastest, most opaque)
-  wave_layers[2].offset_x = 0.0f;
-  wave_layers[2].speed = 0.8f;
-  wave_layers[2].y_position = VITA_HEIGHT * 0.5f;
-  wave_layers[2].alpha = 0.7f;
-
-  wave_animation_initialized = true;
-}
-
-/// Update wave parallax animation
-void update_wave_animation() {
-  if (!wave_animation_initialized) {
-    init_wave_animation();
-  }
-
-  // Get wave texture width for wrapping
-  int wave_width = wave_top ? vita2d_texture_get_width(wave_top) : WAVE_NAV_WIDTH;
-
-  for (int i = 0; i < WAVE_LAYER_COUNT; i++) {
-    wave_layers[i].offset_x += wave_layers[i].speed;
-
-    // Wrap around when offset exceeds wave width
-    if (wave_layers[i].offset_x >= wave_width) {
-      wave_layers[i].offset_x -= wave_width;
-    }
-  }
-}
-
-/// Render VitaRPS5 wave navigation sidebar with parallax animation
+/// Render VitaRPS5 navigation sidebar with simple colored bar
 void render_wave_navigation() {
-  // Draw animated wave layers with parallax effect
-  if (wave_top) {
-    int wave_width = vita2d_texture_get_width(wave_top);
-    int wave_height = vita2d_texture_get_height(wave_top);
-
-    // Draw each wave layer with different offsets and transparency
-    for (int i = 0; i < WAVE_LAYER_COUNT; i++) {
-      // Calculate draw positions for seamless wrapping
-      float x1 = -wave_layers[i].offset_x;
-      float x2 = x1 + wave_width;
-      float y = wave_layers[i].y_position;
-
-      // Set alpha tinting (note: vita2d color format is ABGR)
-      uint32_t alpha_value = (uint32_t)(wave_layers[i].alpha * 255.0f);
-      uint32_t tint_color = (alpha_value << 24) | 0x00FFFFFF;
-
-      // Draw first instance
-      if (x1 < WAVE_NAV_WIDTH) {
-        vita2d_draw_texture_tint(wave_top, x1, y, tint_color);
-      }
-
-      // Draw second instance for seamless wrapping
-      if (x2 < WAVE_NAV_WIDTH) {
-        vita2d_draw_texture_tint(wave_top, x2, y, tint_color);
-      }
-    }
-  }
-
-  // Draw static bottom wave (optional, can be removed or animated too)
-  if (wave_bottom) {
-    vita2d_draw_texture(wave_bottom, 0, VITA_HEIGHT - vita2d_texture_get_height(wave_bottom));
-  }
+  // Draw simple teal/cyan colored bar for navigation sidebar
+  // Color matches the original wave texture (teal/cyan)
+  uint32_t nav_bar_color = RGBA8(78, 133, 139, 255);  // Teal color from wave texture
+  vita2d_draw_rectangle(0, 0, WAVE_NAV_WIDTH, VITA_HEIGHT, nav_bar_color);
 
   // Navigation icons array
   vita2d_texture* nav_icons[4] = {
@@ -797,27 +715,35 @@ void update_console_card_cache(bool force_update) {
 
 /// Render console cards in grid layout
 void render_console_grid() {
-  int screen_center_x = VITA_WIDTH / 2;
-  int content_area_x = WAVE_NAV_WIDTH + ((VITA_WIDTH - WAVE_NAV_WIDTH) / 2);
-
-  // Header text - properly centered
-  const char* header_text = "Which do you want to connect?";
-  int text_width = vita2d_font_text_width(font, 24, header_text);
-  int text_x = content_area_x - (text_width / 2);  // Center the text
-  vita2d_font_draw_text(font, text_x, 100, UI_COLOR_TEXT_PRIMARY, 24, header_text);
+  // Calculate content area (screen minus nav bar)
+  int content_area_width = VITA_WIDTH - WAVE_NAV_WIDTH;
+  int content_area_center_x = WAVE_NAV_WIDTH + (content_area_width / 2);
+  int screen_center_y = VITA_HEIGHT / 2;
 
   // Update cache (respects 10-second interval)
   update_console_card_cache(false);
 
+  // Calculate card vertical center position
+  int card_y = screen_center_y - (CONSOLE_CARD_HEIGHT / 2);
+  int card_x = content_area_center_x - (CONSOLE_CARD_WIDTH / 2);
+
+  // Header text - centered horizontally above the card
+  const char* header_text = "Which do you want to connect?";
+  int text_width = vita2d_font_text_width(font, 24, header_text);
+  int text_x = content_area_center_x - (text_width / 2);
+  int text_y = card_y - 50;  // Position text 50px above card
+
+  vita2d_font_draw_text(font, text_x, text_y, UI_COLOR_TEXT_PRIMARY, 24, header_text);
+
   // Use cached cards to prevent flickering
   if (card_cache.num_cards > 0) {
     for (int i = 0; i < card_cache.num_cards; i++) {
-      int card_x = content_area_x - (CONSOLE_CARD_WIDTH / 2);
-      int card_y = CONSOLE_CARD_START_Y + (i * CONSOLE_CARD_SPACING);
+      // For multiple cards, stack them vertically centered around screen center
+      int this_card_y = card_y + (i * CONSOLE_CARD_SPACING);
 
       // Only show selection highlight if console cards have focus
       bool selected = (i == selected_console_index && current_focus == FOCUS_CONSOLE_CARDS);
-      render_console_card(&card_cache.cards[i], card_x, card_y, selected);
+      render_console_card(&card_cache.cards[i], card_x, this_card_y, selected);
     }
   }
 }
@@ -1211,8 +1137,7 @@ UIScreenType draw_main_menu() {
   update_particles();
   render_particles();
 
-  // Update and render VitaRPS5 wave navigation sidebar with parallax animation
-  update_wave_animation();
+  // Render VitaRPS5 navigation sidebar
   render_wave_navigation();
 
   // Render VitaRPS5 console cards instead of host tiles
@@ -1487,10 +1412,9 @@ static void draw_settings_controller_tab(int content_x, int content_y, int conte
 /// Main Settings screen rendering function
 /// @return whether the dialog should keep rendering
 bool draw_settings() {
-  // Render particle background and wave navigation
+  // Render particle background and navigation sidebar
   update_particles();
   render_particles();
-  update_wave_animation();
   render_wave_navigation();
 
   // Main content area (avoiding wave nav sidebar)
@@ -1793,10 +1717,9 @@ static void draw_registration_section(int x, int y, int width, int height, bool 
 /// Main Profile & Registration screen
 /// @return next screen type to display
 UIScreenType draw_profile_screen() {
-  // Render particle background and wave navigation
+  // Render particle background and navigation sidebar
   update_particles();
   render_particles();
-  update_wave_animation();
   render_wave_navigation();
 
   // Main content area
@@ -2101,10 +2024,9 @@ static void draw_controller_settings_tab(int content_x, int content_y, int conte
 
 /// Main Controller Configuration screen with tabs
 bool draw_controller_config_screen() {
-  // Render particle background and wave navigation
+  // Render particle background and navigation sidebar
   update_particles();
   render_particles();
-  update_wave_animation();
   render_wave_navigation();
 
   // Main content area (avoiding wave nav sidebar)
