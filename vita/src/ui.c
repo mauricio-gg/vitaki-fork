@@ -56,8 +56,6 @@
 #define WAVE_NAV_WIDTH 130
 #define CONTENT_AREA_X WAVE_NAV_WIDTH
 #define CONTENT_AREA_WIDTH (VITA_WIDTH - WAVE_NAV_WIDTH)
-#define CONSOLE_CARD_WIDTH 400
-#define CONSOLE_CARD_HEIGHT 200
 #define PARTICLE_COUNT 12
 
 // Legacy layout (will be phased out)
@@ -139,7 +137,7 @@ static int selected_nav_icon = 0;  // 0=Play, 1=Settings, 2=Controller, 3=Profil
 static float wave_animation_time = 0.0f;
 
 // Console card system
-#define CONSOLE_CARD_WIDTH 400
+#define CONSOLE_CARD_WIDTH 200  // Half width for more compact cards
 #define CONSOLE_CARD_HEIGHT 200
 #define CONSOLE_CARD_SPACING 120
 #define CONSOLE_CARD_START_Y 150
@@ -867,8 +865,8 @@ UIScreenType handle_vitarps5_touch_input(int num_hosts) {
         switch (i) {
           case 0: return UI_SCREEN_TYPE_MAIN;
           case 1: return UI_SCREEN_TYPE_SETTINGS;
-          case 2: return UI_SCREEN_TYPE_REGISTER_HOST;  // Controller (placeholder)
-          case 3: return UI_SCREEN_TYPE_REGISTER_HOST;  // Profile (placeholder)
+          case 2: return UI_SCREEN_TYPE_CONTROLLER;  // Controller Configuration
+          case 3: return UI_SCREEN_TYPE_PROFILE;     // Profile & Authentication
         }
       }
     }
