@@ -1512,9 +1512,11 @@ static const char* fps_options[] = {"30 FPS", "60 FPS"};
 /// Get resolution string from ChiakiVideoResolutionPreset
 static const char* get_resolution_string(ChiakiVideoResolutionPreset preset) {
   switch (preset) {
-    case CHIAKI_VIDEO_RESOLUTION_PRESET_720p: return "720p";
-    case CHIAKI_VIDEO_RESOLUTION_PRESET_1080p: return "1080p";
-    default: return "720p";
+    case CHIAKI_VIDEO_RESOLUTION_PRESET_360p: return "360p";
+    case CHIAKI_VIDEO_RESOLUTION_PRESET_540p: return "540p";
+    case CHIAKI_VIDEO_RESOLUTION_PRESET_720p: return "720p (Experimental)";
+    case CHIAKI_VIDEO_RESOLUTION_PRESET_1080p: return "1080p (Experimental)";
+    default: return "540p";
   }
 }
 
@@ -1717,9 +1719,22 @@ bool draw_settings() {
     switch (settings_state.current_tab) {
       case SETTINGS_TAB_STREAMING:
         if (settings_state.selected_item == 0) {
-          // Cycle resolution
-          context.config.resolution = (context.config.resolution == CHIAKI_VIDEO_RESOLUTION_PRESET_720p) ?
-            CHIAKI_VIDEO_RESOLUTION_PRESET_1080p : CHIAKI_VIDEO_RESOLUTION_PRESET_720p;
+          // Cycle resolution: 360p → 540p → 720p → 1080p → 360p
+          switch (context.config.resolution) {
+            case CHIAKI_VIDEO_RESOLUTION_PRESET_360p:
+              context.config.resolution = CHIAKI_VIDEO_RESOLUTION_PRESET_540p;
+              break;
+            case CHIAKI_VIDEO_RESOLUTION_PRESET_540p:
+              context.config.resolution = CHIAKI_VIDEO_RESOLUTION_PRESET_720p;
+              break;
+            case CHIAKI_VIDEO_RESOLUTION_PRESET_720p:
+              context.config.resolution = CHIAKI_VIDEO_RESOLUTION_PRESET_1080p;
+              break;
+            case CHIAKI_VIDEO_RESOLUTION_PRESET_1080p:
+            default:
+              context.config.resolution = CHIAKI_VIDEO_RESOLUTION_PRESET_360p;
+              break;
+          }
           config_serialize(&context.config);
         } else if (settings_state.selected_item == 1) {
           // Cycle FPS
