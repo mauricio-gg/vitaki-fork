@@ -197,6 +197,7 @@ typedef enum ui_screen_type_t {
   UI_SCREEN_TYPE_ADD_HOST,
   UI_SCREEN_TYPE_EDIT_HOST,
   UI_SCREEN_TYPE_STREAM,
+  UI_SCREEN_TYPE_WAKING,         // Waking up console screen
   UI_SCREEN_TYPE_SETTINGS,
   UI_SCREEN_TYPE_MESSAGES,
   UI_SCREEN_TYPE_PROFILE,        // Phase 2: Profile & Registration screen
@@ -1427,10 +1428,10 @@ UIScreenType draw_main_menu() {
               // Unregistered console - start registration
               next_screen = UI_SCREEN_TYPE_REGISTER_HOST;
             } else if (at_rest) {
-              // Dormant console - wake first, then stream
-              LOGD("Waking dormant console before streaming...");
+              // Dormant console - wake and show waking screen
+              LOGD("Waking dormant console...");
               host_wakeup(context.active_host);
-              // Note: User will need to press X again after console wakes
+              next_screen = UI_SCREEN_TYPE_WAKING;
             } else if (registered) {
               // Ready console - start streaming
               next_screen = UI_SCREEN_TYPE_STREAM;
@@ -1458,10 +1459,33 @@ UIScreenType draw_main_menu() {
           if (registered) {
             // Remove registration and trigger re-pairing
             LOGD("Re-pairing console: %s", host->hostname);
+
+            // Free registered state memory
+            if (host->registered_state) {
+              free(host->registered_state);
+              host->registered_state = NULL;
+            }
+
+            // Remove from config.registered_hosts array
+            for (int j = 0; j < context.config.num_registered_hosts; j++) {
+              if (context.config.registered_hosts[j] == host) {
+                // Shift remaining elements left
+                for (int k = j; k < context.config.num_registered_hosts - 1; k++) {
+                  context.config.registered_hosts[k] = context.config.registered_hosts[k + 1];
+                }
+                context.config.registered_hosts[context.config.num_registered_hosts - 1] = NULL;
+                context.config.num_registered_hosts--;
+                break;
+              }
+            }
+
             // Clear registered flag
             host->type &= ~REGISTERED;
-            // Clear registered state
-            host->registered_state = NULL;
+
+            // Save config to persist changes
+            config_serialize(&context.config);
+
+            LOGD("Registration data deleted for console: %s", host->hostname);
 
             // Trigger registration screen
             context.active_host = host;
@@ -2420,8 +2444,17 @@ bool draw_registration_dialog() {
   // Console info (name and IP)
   if (context.active_host) {
     char console_info[128];
-    const char* host_name = context.active_host->hostname ? context.active_host->hostname : "Unknown";
+    const char* console_name = "Unknown Console";
     const char* host_ip = NULL;
+
+    // Get console name from discovery or registered state
+    if (context.active_host->discovery_state && context.active_host->discovery_state->host_name) {
+      console_name = context.active_host->discovery_state->host_name;
+    } else if (context.active_host->registered_state && context.active_host->registered_state->server_nickname) {
+      console_name = context.active_host->registered_state->server_nickname;
+    } else if (context.active_host->hostname) {
+      console_name = context.active_host->hostname;
+    }
 
     // Get IP from discovery or registered state
     if (context.active_host->discovery_state && context.active_host->discovery_state->host_addr) {
@@ -2431,9 +2464,9 @@ bool draw_registration_dialog() {
     }
 
     if (host_ip) {
-      snprintf(console_info, sizeof(console_info), "Console: %s (%s)", host_name, host_ip);
+      snprintf(console_info, sizeof(console_info), "%s (%s)", console_name, host_ip);
     } else {
-      snprintf(console_info, sizeof(console_info), "Console: %s", host_name);
+      snprintf(console_info, sizeof(console_info), "%s", console_name);
     }
     vita2d_font_draw_text(font, card_x + 20, card_y + 100, UI_COLOR_TEXT_SECONDARY, 20, console_info);
   }
@@ -2456,7 +2489,7 @@ bool draw_registration_dialog() {
 
   // Navigation hints
   vita2d_font_draw_text(font, card_x + 20, card_y + PIN_CARD_HEIGHT - 50, UI_COLOR_TEXT_SECONDARY, 18,
-                        "Left/Right: Move   Up/Down: Change digit   Cross: Confirm   Triangle: Cancel");
+                        "Left/Right: Move   Up/Down: Change digit   Cross: Confirm   Circle: Cancel");
 
   // Input handling
   if (btn_pressed(SCE_CTRL_LEFT)) {
@@ -2487,7 +2520,7 @@ bool draw_registration_dialog() {
       pin_entry_initialized = false;  // Reset for next time
       return false;
     }
-  } else if (btn_pressed(SCE_CTRL_TRIANGLE)) {
+  } else if (btn_pressed(SCE_CTRL_CIRCLE)) {
     // Cancel
     pin_entry_initialized = false;  // Reset for next time
     return false;
@@ -2672,17 +2705,118 @@ bool draw_edit_host_dialog() {
 /// Render the current frame of an active stream
 /// @return whether the stream should keep rendering
 bool draw_stream() {
-  // Stream is rendering - just keep the screen clear and let video callback render frames
-  // Return true to stay on stream screen until user exits
-  vita2d_set_clear_color(RGBA8(0x00, 0x00, 0x00, 0xFF));
+  // Match ywnico: immediately return false, let video callback handle everything
+  // UI loop will skip rendering when is_streaming is true
+  if (context.stream.is_streaming) context.stream.is_streaming = false;
+  return false;
+}
 
-  // Circle button exits stream
-  if (btn_pressed(SCE_CTRL_CIRCLE)) {
-    context.stream.is_streaming = false;
-    return false;  // Exit to main menu
+/// Waking screen state
+static uint32_t waking_start_time = 0;
+static int waking_animation_frame = 0;
+static UIScreenType waking_next_screen = UI_SCREEN_TYPE_MAIN;
+static const uint32_t WAKING_TIMEOUT_MS = 30000;  // 30 seconds timeout
+
+/// Draw the "Waking up console..." screen with animation
+/// @return the next screen to show
+UIScreenType draw_waking_screen() {
+  // Initialize timer on first call
+  if (waking_start_time == 0) {
+    waking_start_time = sceKernelGetProcessTimeLow() / 1000;  // Convert to milliseconds
+    waking_animation_frame = 0;
+    waking_next_screen = UI_SCREEN_TYPE_WAKING;
   }
 
-  return true;  // Stay on stream screen
+  // Check timeout
+  uint32_t current_time = sceKernelGetProcessTimeLow() / 1000;
+  uint32_t elapsed = current_time - waking_start_time;
+
+  if (elapsed > WAKING_TIMEOUT_MS) {
+    // Timeout - reset and go back to main
+    waking_start_time = 0;
+    return UI_SCREEN_TYPE_MAIN;
+  }
+
+  // Check if console woke up (became ready for streaming)
+  if (context.active_host) {
+    bool ready = (context.active_host->type & REGISTERED) &&
+                 !(context.active_host->discovery_state &&
+                   context.active_host->discovery_state->state == CHIAKI_DISCOVERY_HOST_STATE_STANDBY);
+
+    if (ready) {
+      // Console woke up! Reset state and start streaming
+      waking_start_time = 0;
+      host_stream(context.active_host);
+      return UI_SCREEN_TYPE_STREAM;
+    }
+  }
+
+  // Draw waking screen
+  vita2d_set_clear_color(RGBA8(0x1A, 0x1A, 0x2E, 0xFF));
+
+  // Card dimensions
+  int card_w = 600;
+  int card_h = 300;
+  int card_x = (VITA_WIDTH - card_w) / 2;
+  int card_y = (VITA_HEIGHT - card_h) / 2;
+
+  // Draw card background
+  vita2d_draw_rectangle(card_x, card_y, card_w, card_h, RGBA8(0x2A, 0x2A, 0x3E, 0xFF));
+
+  // Draw card border
+  vita2d_draw_rectangle(card_x, card_y, card_w, 2, UI_COLOR_PRIMARY_BLUE);  // Top
+  vita2d_draw_rectangle(card_x, card_y + card_h - 2, card_w, 2, UI_COLOR_PRIMARY_BLUE);  // Bottom
+
+  // Draw title
+  const char* title = "Waking Up Console";
+  vita2d_font_draw_text(font, card_x + 30, card_y + 60, UI_COLOR_TEXT_PRIMARY, 28, title);
+
+  // Draw console name if available
+  if (context.active_host && context.active_host->hostname) {
+    char console_text[128];
+    snprintf(console_text, sizeof(console_text), "Console: %s", context.active_host->hostname);
+    vita2d_font_draw_text(font, card_x + 30, card_y + 100, UI_COLOR_TEXT_SECONDARY, 20, console_text);
+  }
+
+  // Animate dots (simple animation: 0, 1, 2, 3 dots cycling)
+  waking_animation_frame = (current_time / 500) % 4;  // Change every 500ms
+  char dots[5] = "";
+  for (int i = 0; i < waking_animation_frame; i++) {
+    dots[i] = '.';
+  }
+  dots[waking_animation_frame] = '\0';
+
+  char status_text[64];
+  snprintf(status_text, sizeof(status_text), "Please wait%s", dots);
+  vita2d_font_draw_text(font, card_x + 30, card_y + 150, UI_COLOR_TEXT_PRIMARY, 22, status_text);
+
+  // Draw timeout progress bar
+  int progress_w = card_w - 60;
+  int progress_h = 6;
+  int progress_x = card_x + 30;
+  int progress_y = card_y + card_h - 60;
+
+  // Background
+  vita2d_draw_rectangle(progress_x, progress_y, progress_w, progress_h, RGBA8(0x40, 0x40, 0x50, 0xFF));
+
+  // Progress
+  float progress_ratio = (float)elapsed / (float)WAKING_TIMEOUT_MS;
+  int filled_w = (int)(progress_w * progress_ratio);
+  vita2d_draw_rectangle(progress_x, progress_y, filled_w, progress_h, UI_COLOR_PRIMARY_BLUE);
+
+  // Timeout text
+  int remaining_sec = (WAKING_TIMEOUT_MS - elapsed) / 1000;
+  char timeout_text[32];
+  snprintf(timeout_text, sizeof(timeout_text), "Timeout in %d seconds", remaining_sec);
+  vita2d_font_draw_text(font, card_x + 30, card_y + card_h - 30, UI_COLOR_TEXT_SECONDARY, 18, timeout_text);
+
+  // Circle to cancel
+  if (btn_pressed(SCE_CTRL_CIRCLE)) {
+    waking_start_time = 0;
+    return UI_SCREEN_TYPE_MAIN;
+  }
+
+  return UI_SCREEN_TYPE_WAKING;  // Keep showing waking screen
 }
 
 /// Draw the debug messages screen
@@ -2840,29 +2974,17 @@ void draw_ui() {
   load_psn_id_if_needed();
 
   while (true) {
-    // Skip UI controller input when streaming - input thread handles it
-    if (!context.stream.is_streaming) {
-      // Get current controller state (destructive read - consumes buffer)
-      if (!sceCtrlReadBufferPositive(0, &ctrl, 1)) {
-        // Try again...
-        LOGE("Failed to get controller state");
-        continue;
-      }
-      context.ui_state.old_button_state = context.ui_state.button_state;
-      context.ui_state.button_state = ctrl.buttons;
-
-      // Get current touch state
-      sceTouchPeek(SCE_TOUCH_PORT_FRONT, &(context.ui_state.touch_state_front),
-                  1);
-    } else {
-      // During streaming: only peek at Circle button for exit (non-destructive)
-      SceCtrlData stream_ctrl;
-      if (sceCtrlPeekBufferPositive(0, &stream_ctrl, 1)) {
-        // Update button state for Circle button detection in draw_stream()
-        context.ui_state.old_button_state = context.ui_state.button_state;
-        context.ui_state.button_state = stream_ctrl.buttons;
-      }
+    // Always read controller input - input thread uses Ext2 variant to access controller independently
+    if (!sceCtrlReadBufferPositive(0, &ctrl, 1)) {
+      // Try again...
+      LOGE("Failed to get controller state");
+      continue;
     }
+    context.ui_state.old_button_state = context.ui_state.button_state;
+    context.ui_state.button_state = ctrl.buttons;
+
+    // Get current touch state
+    sceTouchPeek(SCE_TOUCH_PORT_FRONT, &(context.ui_state.touch_state_front), 1);
 
 
       // handle invalid items
@@ -2888,6 +3010,8 @@ void draw_ui() {
         context.ui_state.active_item = context.ui_state.next_active_item;
         context.ui_state.next_active_item = -1;
       }
+
+      // Skip ALL rendering when streaming - match ywnico pattern
       if (!context.stream.is_streaming) {
         vita2d_start_drawing();
         vita2d_clear_screen();
@@ -2944,6 +3068,8 @@ void draw_ui() {
           if (!draw_stream()) {
             screen = UI_SCREEN_TYPE_MAIN;
           }
+        } else if (screen == UI_SCREEN_TYPE_WAKING) {
+          screen = draw_waking_screen();
         } else if (screen == UI_SCREEN_TYPE_SETTINGS) {
           if (context.ui_state.active_item != (UI_MAIN_WIDGET_TEXT_INPUT | 2)) {
             context.ui_state.next_active_item = (UI_MAIN_WIDGET_TEXT_INPUT | 1);
