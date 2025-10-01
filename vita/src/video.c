@@ -684,6 +684,18 @@ bool vita_h264_process_header(uint8_t *data, size_t data_len) {
 // uint8_t *lbuf;
 // bool infirst_frame = false;
 int vita_h264_decode_frame(uint8_t *buf, size_t buf_size) {
+  // Early validation to detect corrupted frames before decoding
+  if (buf == NULL || buf_size == 0) {
+    LOGD("VIDEO: Invalid frame (NULL or zero size), skipping");
+    return 1;
+  }
+
+  // Validate minimum H.264 NAL unit size (at least 5 bytes for NAL header)
+  if (buf_size < 5) {
+    LOGD("VIDEO: Frame too small (%zu bytes), possibly corrupted, skipping", buf_size);
+    return 1;
+  }
+
   // free(lbuf);
   // lbuf = buf;
   chiaki_mutex_lock(&mtx);

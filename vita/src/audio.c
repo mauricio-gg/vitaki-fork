@@ -65,6 +65,10 @@ size_t write_frame_offset;
 size_t device_buffer_offset;
 int write_read_framediff;
 
+// Audio buffer monitoring for detecting lag accumulation
+static uint64_t audio_catchup_count = 0;
+static uint64_t audio_frames_processed = 0;
+
 size_t device_buffer_from_frame(int frame) {
     return (size_t) ( (frame + buffer_frames) % buffer_frames ) / device_buffer_frames;
 }
@@ -120,8 +124,17 @@ void init_buffer() {
 
 void vita_audio_cleanup() {
     if (did_secondary_init) {
+        // Log final audio buffer stats
+        if (audio_frames_processed > 0) {
+            float catchup_rate = (float)audio_catchup_count / (float)audio_frames_processed * 100.0f;
+            LOGD("VITA AUDIO :: Session stats - Frames: %lu, Catchups: %lu (%.2f%%)",
+                 audio_frames_processed, audio_catchup_count, catchup_rate);
+        }
+
         free(buffer);
         did_secondary_init = false;
+        audio_catchup_count = 0;
+        audio_frames_processed = 0;
     }
 }
 
@@ -147,6 +160,7 @@ void vita_audio_cb(int16_t *buf_in, size_t samples_count, void *user) {
         memcpy(buffer + write_frame_offset*frame_size*sample_steps, buf_in, frame_size * sample_bytes);
         write_frame_offset = (write_frame_offset + 1) % buffer_frames;
         write_read_framediff++;
+        audio_frames_processed++;
 
         if (write_read_framediff >= device_buffer_frames) {
 
@@ -162,6 +176,16 @@ void vita_audio_cb(int16_t *buf_in, size_t samples_count, void *user) {
                 // the data just written. Otherwise, if we wait for the next
                 // frame, we'll be stuck playing a device buffer which contains
                 // one frame of new data and the rest old data.
+
+                audio_catchup_count++;
+
+                // Log warning if catchup happens frequently (>1% of frames)
+                if (audio_catchup_count % 100 == 1) {
+                    float catchup_rate = (float)audio_catchup_count / (float)audio_frames_processed * 100.0f;
+                    LOGD("VITA AUDIO :: Buffer catchup rate: %.2f%% (%lu catchups in %lu frames)",
+                         catchup_rate, audio_catchup_count, audio_frames_processed);
+                }
+
                 LOGD("VITA AUDIO :: audio catchup: [before] write_read_framediff %d, write_frame_offset %d, device_buffer_offset %d (read frame offset %d)", write_read_framediff, write_frame_offset, device_buffer_offset, device_buffer_offset*device_buffer_frames);
 
                 device_buffer_offset = device_buffer_from_frame( ((int) write_frame_offset) - 1 );
