@@ -165,6 +165,7 @@ typedef struct {
 static PinEntryState pin_entry_state = {0};
 static bool show_cursor = false;
 static uint32_t cursor_blink_timer = 0;
+static bool pin_entry_initialized = false;
 
 // Focus system for D-pad navigation
 typedef enum {
@@ -1422,13 +1423,18 @@ UIScreenType draw_main_menu() {
             bool at_rest = discovered && context.active_host->discovery_state &&
                            context.active_host->discovery_state->state == CHIAKI_DISCOVERY_HOST_STATE_STANDBY;
 
-            if (discovered && !at_rest && registered) {
+            if (!registered) {
+              // Unregistered console - start registration
+              next_screen = UI_SCREEN_TYPE_REGISTER_HOST;
+            } else if (at_rest) {
+              // Dormant console - wake first, then stream
+              LOGD("Waking dormant console before streaming...");
+              host_wakeup(context.active_host);
+              // Note: User will need to press X again after console wakes
+            } else if (registered) {
+              // Ready console - start streaming
               next_screen = UI_SCREEN_TYPE_MESSAGES;
               host_stream(context.active_host);
-            } else if (at_rest) {
-              host_wakeup(context.active_host);
-            } else if (!registered) {
-              next_screen = UI_SCREEN_TYPE_REGISTER_HOST;
             }
             break;
           }
@@ -1440,24 +1446,31 @@ UIScreenType draw_main_menu() {
 
   // === OTHER BUTTONS ===
 
-  // Square: Wake selected console (only works on console cards)
+  // Square: Re-pair selected console (unregister + register again)
   if (btn_pressed(SCE_CTRL_SQUARE) && current_focus == FOCUS_CONSOLE_CARDS && num_hosts > 0) {
     int host_idx = 0;
     for (int i = 0; i < MAX_NUM_HOSTS; i++) {
       if (context.hosts[i]) {
         if (host_idx == selected_console_index) {
-          host_wakeup(context.hosts[i]);
+          VitaChiakiHost* host = context.hosts[i];
+          bool registered = host->type & REGISTERED;
+
+          if (registered) {
+            // Remove registration and trigger re-pairing
+            LOGD("Re-pairing console: %s", host->hostname);
+            // Clear registered flag
+            host->type &= ~REGISTERED;
+            // Clear registered state
+            host->registered_state = NULL;
+
+            // Trigger registration screen
+            context.active_host = host;
+            next_screen = UI_SCREEN_TYPE_REGISTER_HOST;
+          }
           break;
         }
         host_idx++;
       }
-    }
-  }
-
-  // Triangle: Trigger discovery
-  if (btn_pressed(SCE_CTRL_TRIANGLE)) {
-    if (!context.discovery_enabled) {
-      start_discovery(NULL, NULL);
     }
   }
 
@@ -1471,7 +1484,7 @@ UIScreenType draw_main_menu() {
   int hint_y = VITA_HEIGHT - 25;
   int hint_x = WAVE_NAV_WIDTH + 20;
   vita2d_font_draw_text(font, hint_x, hint_y, UI_COLOR_TEXT_TERTIARY, 16,
-    "D-Pad: Navigate | X: Select/OK | Square: Wake | Triangle: Discover");
+    "D-Pad: Navigate | Cross: Connect/Wake | Square: Re-pair");
 
 
   return next_screen;
@@ -2330,6 +2343,7 @@ void reset_pin_entry() {
   pin_entry_state.complete_pin = 0;
   show_cursor = true;
   cursor_blink_timer = 0;
+  pin_entry_initialized = true;
 }
 
 /// Helper: Update cursor blink animation
@@ -2385,6 +2399,11 @@ void render_pin_digit(int x, int y, uint32_t digit, bool is_current, bool has_va
 /// Draw VitaRPS5-style PIN entry registration screen
 /// @return whether the dialog should keep rendering
 bool draw_registration_dialog() {
+  // Initialize PIN entry on first render
+  if (!pin_entry_initialized) {
+    reset_pin_entry();
+  }
+
   // Update cursor blink
   update_cursor_blink();
 
@@ -2437,7 +2456,7 @@ bool draw_registration_dialog() {
 
   // Navigation hints
   vita2d_font_draw_text(font, card_x + 20, card_y + PIN_CARD_HEIGHT - 50, UI_COLOR_TEXT_SECONDARY, 18,
-                        "D-Pad: Navigate/Enter digits     X: Confirm     Triangle: Cancel");
+                        "Left/Right: Move   Up/Down: Change digit   Cross: Confirm   Triangle: Cancel");
 
   // Input handling
   if (btn_pressed(SCE_CTRL_LEFT)) {
@@ -2465,12 +2484,12 @@ bool draw_registration_dialog() {
       uint32_t pin = pin_to_number();
       LOGD("User entered PIN: %08u", pin);
       host_register(context.active_host, pin);
-      reset_pin_entry();
+      pin_entry_initialized = false;  // Reset for next time
       return false;
     }
   } else if (btn_pressed(SCE_CTRL_TRIANGLE)) {
     // Cancel
-    reset_pin_entry();
+    pin_entry_initialized = false;  // Reset for next time
     return false;
   }
 
