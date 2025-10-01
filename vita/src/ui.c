@@ -81,19 +81,6 @@ typedef struct {
 } Particle;
 
 #define TEXTURE_PATH "app0:/assets/"
-#define BTN_REGISTER_PATH TEXTURE_PATH "btn_register.png"
-#define BTN_REGISTER_ACTIVE_PATH TEXTURE_PATH "btn_register_active.png"
-#define BTN_ADD_PATH TEXTURE_PATH "btn_add.png"
-#define BTN_ADD_ACTIVE_PATH TEXTURE_PATH "btn_add_active.png"
-#define BTN_DISCOVERY_PATH TEXTURE_PATH "btn_discovery.png"
-#define BTN_DISCOVERY_ACTIVE_PATH TEXTURE_PATH "btn_discovery_active.png"
-#define BTN_DISCOVERY_OFF_PATH TEXTURE_PATH "btn_discovery_off.png"
-#define BTN_DISCOVERY_OFF_ACTIVE_PATH \
-  TEXTURE_PATH "btn_discovery_off_active.png"
-#define BTN_SETTINGS_PATH TEXTURE_PATH "btn_settings.png"
-#define BTN_SETTINGS_ACTIVE_PATH TEXTURE_PATH "btn_settings_active.png"
-#define BTN_MESSAGES_PATH TEXTURE_PATH "btn_messages.png"
-#define BTN_MESSAGES_ACTIVE_PATH TEXTURE_PATH "btn_messages_active.png"
 #define IMG_PS4_PATH TEXTURE_PATH "ps4.png"
 #define IMG_PS4_OFF_PATH TEXTURE_PATH "ps4_off.png"
 #define IMG_PS4_REST_PATH TEXTURE_PATH "ps4_rest.png"
@@ -101,26 +88,20 @@ typedef struct {
 #define IMG_PS5_OFF_PATH TEXTURE_PATH "ps5_off.png"
 #define IMG_PS5_REST_PATH TEXTURE_PATH "ps5_rest.png"
 #define IMG_DISCOVERY_HOST TEXTURE_PATH "discovered_host.png"
-#define IMG_HEADER_LOGO_PATH TEXTURE_PATH "header_logo.png"
 
 vita2d_font* font;
 vita2d_font* font_mono;
-vita2d_texture *btn_register, *btn_register_active, *btn_add, *btn_add_active,
-    *btn_discovery, *btn_discovery_active, *btn_discovery_off,
-    *btn_discovery_off_active, *btn_settings, *btn_settings_active,
-    *btn_messages, *btn_messages_active, *img_ps4,
-    *img_ps4_off, *img_ps4_rest, *img_ps5, *img_ps5_off, *img_ps5_rest,
-    *img_header, *img_discovery_host;
+vita2d_texture *img_ps4, *img_ps4_off, *img_ps4_rest,
+    *img_ps5, *img_ps5_off, *img_ps5_rest, *img_discovery_host;
 
 // VitaRPS5 UI textures
 vita2d_texture *symbol_triangle, *symbol_circle, *symbol_ex, *symbol_square;
 vita2d_texture *wave_top, *wave_bottom;
 vita2d_texture *ellipse_green, *ellipse_yellow, *ellipse_red;
-vita2d_texture *button_add_new, *console_card_bg;
+vita2d_texture *button_add_new;
 vita2d_texture *icon_play, *icon_settings, *icon_controller, *icon_profile;
 vita2d_texture *background_gradient, *vita_rps5_logo;
-vita2d_texture *vita_front, *vita_back;
-vita2d_texture *ps5_logo;
+vita2d_texture *vita_front, *ps5_logo;
 
 // Particle system state
 static Particle particles[PARTICLE_COUNT];
@@ -194,8 +175,6 @@ typedef enum ui_screen_type_t {
   UI_SCREEN_TYPE_MAIN = 0,
   UI_SCREEN_TYPE_REGISTER,
   UI_SCREEN_TYPE_REGISTER_HOST,
-  UI_SCREEN_TYPE_ADD_HOST,
-  UI_SCREEN_TYPE_EDIT_HOST,
   UI_SCREEN_TYPE_STREAM,
   UI_SCREEN_TYPE_WAKING,         // Waking up console screen
   UI_SCREEN_TYPE_SETTINGS,
@@ -749,20 +728,6 @@ void draw_play_icon(int center_x, int center_y, int size) {
 
 /// Load all textures required for rendering the UI
 void load_textures() {
-  btn_add = vita2d_load_PNG_file(BTN_ADD_PATH);
-  btn_add_active = vita2d_load_PNG_file(BTN_ADD_ACTIVE_PATH);
-  btn_discovery = vita2d_load_PNG_file(BTN_DISCOVERY_PATH);
-  btn_discovery_active = vita2d_load_PNG_file(BTN_DISCOVERY_ACTIVE_PATH);
-  btn_discovery_off = vita2d_load_PNG_file(BTN_DISCOVERY_OFF_PATH);
-  btn_discovery_off_active =
-      vita2d_load_PNG_file(BTN_DISCOVERY_OFF_ACTIVE_PATH);
-  btn_register = vita2d_load_PNG_file(BTN_REGISTER_PATH);
-  btn_register_active = vita2d_load_PNG_file(BTN_REGISTER_ACTIVE_PATH);
-  btn_settings = vita2d_load_PNG_file(BTN_SETTINGS_PATH);
-  btn_settings_active = vita2d_load_PNG_file(BTN_SETTINGS_ACTIVE_PATH);
-  btn_messages = vita2d_load_PNG_file(BTN_MESSAGES_PATH);
-  btn_messages_active = vita2d_load_PNG_file(BTN_MESSAGES_ACTIVE_PATH);
-  img_header = vita2d_load_PNG_file(IMG_HEADER_LOGO_PATH);
   img_ps4 = vita2d_load_PNG_file(IMG_PS4_PATH);
   img_ps4_off = vita2d_load_PNG_file(IMG_PS4_OFF_PATH);
   img_ps4_rest = vita2d_load_PNG_file(IMG_PS4_REST_PATH);
@@ -772,29 +737,27 @@ void load_textures() {
   img_discovery_host = vita2d_load_PNG_file(IMG_DISCOVERY_HOST);
 
   // Load VitaRPS5 UI assets
-  symbol_triangle = vita2d_load_PNG_file("app0:/assets/vitarps5/symbol_triangle.png");
-  symbol_circle = vita2d_load_PNG_file("app0:/assets/vitarps5/symbol_circle.png");
-  symbol_ex = vita2d_load_PNG_file("app0:/assets/vitarps5/symbol_ex.png");
-  symbol_square = vita2d_load_PNG_file("app0:/assets/vitarps5/symbol_square.png");
-  wave_top = vita2d_load_PNG_file("app0:/assets/vitarps5/wave_top.png");
-  wave_bottom = vita2d_load_PNG_file("app0:/assets/vitarps5/wave_bottom.png");
-  ellipse_green = vita2d_load_PNG_file("app0:/assets/vitarps5/ellipse_green.png");
-  ellipse_yellow = vita2d_load_PNG_file("app0:/assets/vitarps5/ellipse_yellow.png");
-  ellipse_red = vita2d_load_PNG_file("app0:/assets/vitarps5/ellipse_red.png");
-  button_add_new = vita2d_load_PNG_file("app0:/assets/vitarps5/button_add_new.png");
-  console_card_bg = vita2d_load_PNG_file("app0:/assets/vitarps5/console_card.png");
+  symbol_triangle = vita2d_load_PNG_file("app0:/assets/symbol_triangle.png");
+  symbol_circle = vita2d_load_PNG_file("app0:/assets/symbol_circle.png");
+  symbol_ex = vita2d_load_PNG_file("app0:/assets/symbol_ex.png");
+  symbol_square = vita2d_load_PNG_file("app0:/assets/symbol_square.png");
+  wave_top = vita2d_load_PNG_file("app0:/assets/wave_top.png");
+  wave_bottom = vita2d_load_PNG_file("app0:/assets/wave_bottom.png");
+  ellipse_green = vita2d_load_PNG_file("app0:/assets/ellipse_green.png");
+  ellipse_yellow = vita2d_load_PNG_file("app0:/assets/ellipse_yellow.png");
+  ellipse_red = vita2d_load_PNG_file("app0:/assets/ellipse_red.png");
+  button_add_new = vita2d_load_PNG_file("app0:/assets/button_add_new.png");
 
   // Load navigation icons
-  icon_play = vita2d_load_PNG_file("app0:/assets/vitarps5/icon_play.png");
-  icon_settings = vita2d_load_PNG_file("app0:/assets/vitarps5/icon_settings.png");
-  icon_controller = vita2d_load_PNG_file("app0:/assets/vitarps5/icon_controller.png");
-  icon_profile = vita2d_load_PNG_file("app0:/assets/vitarps5/icon_profile.png");
+  icon_play = vita2d_load_PNG_file("app0:/assets/icon_play.png");
+  icon_settings = vita2d_load_PNG_file("app0:/assets/icon_settings.png");
+  icon_controller = vita2d_load_PNG_file("app0:/assets/icon_controller.png");
+  icon_profile = vita2d_load_PNG_file("app0:/assets/icon_profile.png");
 
   // Load new professional assets
   background_gradient = vita2d_load_PNG_file("app0:/assets/background.png");
   vita_rps5_logo = vita2d_load_PNG_file("app0:/assets/Vita_RPS5_Logo.png");
   vita_front = vita2d_load_PNG_file("app0:/assets/Vita_Front.png");
-  vita_back = vita2d_load_PNG_file("app0:/assets/Vita_Back.png");
   ps5_logo = vita2d_load_PNG_file("app0:/assets/PS5_logo.png");
 }
 
@@ -1104,184 +1067,10 @@ UIHostAction host_tile(int host_slot, VitaChiakiHost* host) {
   return UI_HOST_ACTION_NONE;
 }
 
-/// Draw a button into the header bar
-/// @param id           Numerical identifier of the button
-/// @param x_offset     Offset on the X axis in pixels from the start of the
-///                     header bar
-/// @param default_img  Image to render when the button is not active
-/// @param active_img   Image to render when the button is active
-/// @return whether the button is pressed or not
-bool header_button(MainWidgetId id, int x_offset, vita2d_texture* default_img,
-                   vita2d_texture* active_img) {
-  int active_id = context.ui_state.active_item;
-  bool is_active = active_id == id;
-
-  // Draw button
-  vita2d_texture* img = is_active ? active_img : default_img;
-  int w = vita2d_texture_get_width(img);
-  int h = vita2d_texture_get_height(img);
-  int x = HEADER_BAR_X + x_offset;
-  // Buttons are bottom-aligned to the header bar
-  int y = HEADER_BAR_Y + HEADER_BAR_H - h;
-  vita2d_draw_texture(img, x, y);
-
-  // Navigation handling
-  int btn = context.ui_state.button_state;
-  if (is_active) {
-    if (btn_pressed(SCE_CTRL_DOWN) && context.num_hosts > 0) {
-      // Select first host tile
-      context.ui_state.next_active_item = UI_MAIN_WIDGET_HOST_TILE;
-    } else if (btn_pressed(SCE_CTRL_LEFT)) {
-      // Select button to the left
-      context.ui_state.next_active_item = MAX(0, active_id - 1);
-    } else if (btn_pressed(SCE_CTRL_RIGHT)) {
-      // Select button to the right
-      context.ui_state.next_active_item =
-          MIN(UI_MAIN_WIDGET_SETTINGS_BTN, active_id + 1);
-    }
-  }
-
-  if (is_touched(x, y, w, h)) {
-    // Focus the button if it's touched, no matter the button state
-    context.ui_state.next_active_item = id;
-    return true;
-  }
-  return is_active && btn_pressed(SCE_CTRL_CONFIRM);
-}
 uint16_t IMEInput[SCE_IME_DIALOG_MAX_TEXT_LENGTH + 1];
 bool showingIME = false;
-char* text_input(MainWidgetId id, int x, int y, int w, int h, char* label,
-                char* value, int max_len) {
-  bool is_active = context.ui_state.active_item == id;
-  if (is_active) {
-    vita2d_draw_rectangle(x + 300 - 3, y - 3, w + 6, h + 6, COLOR_ACTIVE);
-    if (btn_pressed(SCE_CTRL_CONFIRM)) {
-      SceImeDialogParam param;
 
-      sceImeDialogParamInit(&param);
-			param.supportedLanguages = SCE_IME_LANGUAGE_ENGLISH;
-			param.languagesForced = SCE_TRUE;
-			param.type = SCE_IME_TYPE_DEFAULT;
-			param.option = SCE_IME_OPTION_NO_ASSISTANCE;
-			param.textBoxMode = SCE_IME_DIALOG_TEXTBOX_MODE_DEFAULT;
-      uint16_t IMELabel[label != NULL ? sizeof(label) + 1 : sizeof("Text")];
-      utf8_to_utf16(label != NULL ? label : "Text", IMELabel);
-			param.title = IMELabel;
-			param.maxTextLength = SCE_IME_DIALOG_MAX_TEXT_LENGTH;
-      if (value != NULL) {
-        uint16_t IMEValue[sizeof(value)];
-        utf8_to_utf16(value, IMEValue);
-			  param.initialText = IMEValue;
-      }
-			param.inputTextBuffer = IMEInput;
 
-      showingIME = true;
-      sceImeDialogInit(&param);
-    }
-  }
-  vita2d_draw_rectangle(x + 300, y, w, h, COLOR_BLACK);
-  // vita2d_draw_texture(icon, x + 20, y + h / 2);
-  if (label != NULL) vita2d_font_draw_text(font, x, y + h / 1.5, COLOR_WHITE, 40, label);
-  if (value != NULL) vita2d_font_draw_text(font, x + 300, y + h / 1.5, COLOR_WHITE, 40, value);
-  
-  if (is_active && showingIME) {
-    if (sceImeDialogGetStatus() == SCE_COMMON_DIALOG_STATUS_FINISHED) {
-      showingIME = false;
-      SceImeDialogResult result={};
-      sceImeDialogGetResult(&result);
-      sceImeDialogTerm();
-      if (result.button == SCE_IME_DIALOG_BUTTON_ENTER) {
-
-        uint16_t*last_input = (result.button == SCE_IME_DIALOG_BUTTON_ENTER) ? IMEInput:u"";
-        char IMEResult[SCE_IME_DIALOG_MAX_TEXT_LENGTH + 1];
-        utf16_to_utf8(IMEInput, IMEResult);
-        LOGD("IME returned %s", IMEResult);
-        return strdup(IMEResult);
-      }
-    }
-  }
-  return NULL;
-
-  // TODO: Render label + icon
-  // TODO: Render input border
-  // TODO: Render value
-  // TODO: If touched or X pressed, open up IME dialogue and update value
-}
-
-long int number_input(MainWidgetId id, int x, int y, int w, int h, char* label, long int value) {
-  // -1 => blank
-
-  // int to str
-  char value_str[100];
-  if (value == -1) {
-    value_str[0] = 0; // empty string
-  } else {
-    snprintf(value_str, 100, "%d", value);
-  }
-
-  bool is_active = context.ui_state.active_item == id;
-  if (is_active) {
-    vita2d_draw_rectangle(x + 300 - 3, y - 3, w + 6, h + 6, COLOR_ACTIVE);
-    if (btn_pressed(SCE_CTRL_CONFIRM)) {
-      SceImeDialogParam param;
-
-      sceImeDialogParamInit(&param);
-			param.supportedLanguages = SCE_IME_LANGUAGE_ENGLISH;
-			param.languagesForced = SCE_TRUE;
-			param.type = SCE_IME_TYPE_NUMBER;
-			param.option = SCE_IME_OPTION_NO_ASSISTANCE;
-			param.textBoxMode = SCE_IME_DIALOG_TEXTBOX_MODE_DEFAULT;
-      uint16_t IMELabel[label != NULL ? sizeof(label) + 1 : sizeof("Text")];
-      utf8_to_utf16(label != NULL ? label : "Text", IMELabel);
-			param.title = IMELabel;
-			param.maxTextLength = SCE_IME_DIALOG_MAX_TEXT_LENGTH;
-      uint16_t IMEValue[sizeof(value_str)];
-      utf8_to_utf16(value_str, IMEValue);
-      param.initialText = IMEValue;
-			param.inputTextBuffer = IMEInput;
-
-      showingIME = true;
-      sceImeDialogInit(&param);
-    }
-  }
-  vita2d_draw_rectangle(x + 300, y, w, h, COLOR_BLACK);
-  // vita2d_draw_texture(icon, x + 20, y + h / 2);
-  if (label != NULL) vita2d_font_draw_text(font, x, y + h / 1.5, COLOR_WHITE, 40, label);
-  vita2d_font_draw_text(font, x + 300, y + h / 1.5, COLOR_WHITE, 40, value_str);
-
-  if (is_active && showingIME) {
-    if (sceImeDialogGetStatus() == SCE_COMMON_DIALOG_STATUS_FINISHED) {
-      showingIME = false;
-      SceImeDialogResult result={};
-      sceImeDialogGetResult(&result);
-      sceImeDialogTerm();
-      if (result.button == SCE_IME_DIALOG_BUTTON_ENTER) {
-
-        uint16_t*last_input = (result.button == SCE_IME_DIALOG_BUTTON_ENTER) ? IMEInput:u"";
-        char IMEResult[SCE_IME_DIALOG_MAX_TEXT_LENGTH + 1];
-        utf16_to_utf8(IMEInput, IMEResult);
-        long int num = strtol(strdup(IMEResult), NULL, 10);
-        LOGD("IME returned %s -> %d", IMEResult, num);
-        return num;
-      }
-    }
-  }
-
-  // TODO: Render label + icon
-  // TODO: Render input border
-  // TODO: Render value
-  // TODO: If touched or X pressed, open up IME dialogue and return value
-  return -1;
-}
-
-int choice_input(int x, int y, int w, int h, char* label, vita2d_texture* icon,
-                 char** choice_labels, size_t num_choices, uint8_t cur_choice) {
-  // TODO: Render label + icon
-  // TODO: Render input border
-  // TODO: Render value
-  // TODO: Button/touch handling to update choice
-  return -1;
-}
 
 void load_psn_id_if_needed() {
   if (context.config.psn_account_id == NULL || strlen(context.config.psn_account_id) < 1) {
@@ -1298,51 +1087,6 @@ void load_psn_id_if_needed() {
     chiaki_base64_encode(accIDBuf, sizeof(accIDBuf), context.config.psn_account_id, get_base64_size(sizeof(accIDBuf)));
     LOGD("size of id %d", strlen(context.config.psn_account_id));
   }
-}
-
-/// Draw the header bar for the main menu screen
-/// @return the screen to draw during the next cycle
-UIScreenType draw_header_bar() {
-  // Modern header with rounded corners and shadow
-  int w = vita2d_texture_get_width(img_header);
-  int h = vita2d_texture_get_height(img_header);
-  vita2d_draw_texture(img_header, HEADER_BAR_X - w,
-                      HEADER_BAR_Y - (h - HEADER_BAR_H) / 2);
-
-  // Draw header bar with modern styling
-  draw_card_with_shadow(HEADER_BAR_X, HEADER_BAR_Y, HEADER_BAR_W, HEADER_BAR_H, 6, UI_COLOR_CARD_BG);
-
-  // Header buttons
-  UIScreenType next_screen = UI_SCREEN_TYPE_MAIN;
-  if (header_button(UI_MAIN_WIDGET_ADD_HOST_BTN, 315, btn_add,
-                    btn_add_active)) {
-    next_screen = UI_SCREEN_TYPE_ADD_HOST;
-  }
-  if (header_button(UI_MAIN_WIDGET_REGISTER_BTN, 475, btn_register,
-                    btn_register_active)) {
-    // TODO what was this button supposed to do??
-    //next_screen = UI_SCREEN_TYPE_REGISTER;
-  }
-  bool discovery_on = context.discovery_enabled;
-  if (header_button(
-          UI_MAIN_WIDGET_DISCOVERY_BTN, 639,
-          discovery_on ? btn_discovery : btn_discovery_off,
-          discovery_on ? btn_discovery_active : btn_discovery_off_active)) {
-    if (discovery_on) {
-      stop_discovery();
-    } else {
-      start_discovery(NULL, NULL);
-    }
-  }
-  if (header_button(UI_MAIN_WIDGET_MESSAGES_BTN, 684, btn_messages,
-                    btn_messages_active)) {
-    next_screen = UI_SCREEN_TYPE_MESSAGES;
-  }
-  if (header_button(UI_MAIN_WIDGET_SETTINGS_BTN, 729, btn_settings,
-                    btn_settings_active)) {
-    next_screen = UI_SCREEN_TYPE_SETTINGS;
-  }
-  return next_screen;
 }
 
 /// Draw the main menu screen with the list of hosts and header bar
@@ -2533,175 +2277,6 @@ char* REMOTEIP_LABEL = "Remote IP";
 char* REGISTERED_CONSOLE_LABEL = "Console No.";
 char* REMOTEIP;
 int CONSOLENUM = -1;
-
-/// Draw the form to manually add a new host
-/// @return whether the dialog should keep rendering
-bool draw_add_host_dialog() {
-
-  // check if any registered host exists. If not, display a message and no UI.
-  bool registered_host_exists = false;
-  for (int rhost_idx = 0; rhost_idx < context.config.num_registered_hosts; rhost_idx++) {
-    VitaChiakiHost* rhost = context.config.registered_hosts[rhost_idx];
-    if (rhost) {
-      registered_host_exists = true;
-      break;
-    }
-  }
-
-  if (!registered_host_exists) {
-    int font_size = 24;
-    int info_y_delta = 31;
-    int info_x = 30;
-    int info_y = 40;
-
-    vita2d_font_draw_text(font, info_x, info_y, COLOR_WHITE, font_size,
-                          "No registered hosts found."
-                          );
-    vita2d_font_draw_text(font, info_x, info_y + info_y_delta, COLOR_WHITE, font_size,
-                          "Pair to a console on a local network first."
-                          );
-
-    if (btn_pressed(SCE_CTRL_CANCEL) | btn_pressed(SCE_CTRL_CONFIRM)) {
-      context.ui_state.next_active_item = UI_MAIN_WIDGET_ADD_HOST_BTN;
-      REMOTEIP = "";
-      CONSOLENUM = -1;
-      return false;
-    }
-    return true;
-  }
-
-  // at least one registered host exists, so draw ui
-
-  char* remoteip_text = text_input(UI_MAIN_WIDGET_TEXT_INPUT | 1, 30, 30, 600, 80, REMOTEIP_LABEL, REMOTEIP, 20);
-  if (remoteip_text != NULL) {
-    //if (REMOTEIP != NULL) free(REMOTEIP);
-    REMOTEIP = remoteip_text;
-    // LOGD("remoteip_text is %s", remoteip_text);
-    //free(context.config.psn_account_id);
-    //context.config.psn_account_id = remoteip_text;
-    //load_psn_id_if_needed();
-    //config_serialize(&context.config);
-  }
-
-  int console_num = number_input(UI_MAIN_WIDGET_TEXT_INPUT | 2, 30, 140, 600, 80, REGISTERED_CONSOLE_LABEL, CONSOLENUM);
-  if ((console_num >= 0) && (console_num < context.config.num_registered_hosts)) {
-    VitaChiakiHost* rhost = context.config.registered_hosts[console_num];
-    if (rhost) {
-      CONSOLENUM = console_num;
-      // LOGD("console_num is %d", console_num);
-      //context.config.controller_map_id = console_num;
-      //config_serialize(&context.config);
-    }
-  }
-
-  // Draw list of consoles
-  int font_size = 18;
-  int info_x = 30;
-  int info_y = 250;
-  int info_y_delta = 21;
-
-  // write host list if possible
-  int host_exists = false;
-  int j = 0;
-  for (int rhost_idx = 0; rhost_idx < context.config.num_registered_hosts; rhost_idx++) {
-    VitaChiakiHost* rhost = context.config.registered_hosts[rhost_idx];
-    if (!rhost) {
-      continue;
-    }
-
-    // If a host is found then there is at least 1 host, so write instructions line.
-    if (!host_exists) {
-      vita2d_font_draw_text(font, info_x, info_y, COLOR_WHITE, font_size,
-                            "Select number (0, 1, etc) from registered consoles below:"
-                            );
-    }
-    host_exists = true;
-
-
-    bool is_ps5 = chiaki_target_is_ps5(rhost->target);
-    char this_host_info[100];
-    char* nickname = rhost->registered_state->server_nickname;
-    if (!nickname) nickname = "";
-    snprintf(this_host_info, 100, "%d: %s [%X%X%X%X%X%X] (%s)", rhost_idx,
-             nickname, rhost->server_mac[0], rhost->server_mac[1],
-             rhost->server_mac[2], rhost->server_mac[3], rhost->server_mac[4], rhost->server_mac[5],
-             is_ps5 ? "PS5" : "PS4");
-
-
-    vita2d_font_draw_text(font, info_x, info_y + 2*(j+1)*info_y_delta, COLOR_WHITE, font_size,
-                          this_host_info
-                          );
-
-    j++;
-  }
-
-  if (!host_exists) {
-    // this should never be shown
-    vita2d_font_draw_text(font, info_x, info_y, COLOR_WHITE, font_size,
-                          "No registered hosts found. Pair to a console on a local network first."
-                          );
-  }
-
-  int tooltip_x = 10;
-  int tooltip_y = VITA_HEIGHT - font_size;
-  vita2d_font_draw_textf(font, tooltip_x, tooltip_y, COLOR_WHITE, font_size,
-                         "Triangle: save and add host;  %s: Exit without saving.", cancel_btn_str
-                        );
-
-  if (btn_pressed(SCE_CTRL_DOWN)) {
-    context.ui_state.next_active_item = (UI_MAIN_WIDGET_TEXT_INPUT | 2);
-  }
-  if (btn_pressed(SCE_CTRL_UP)) {
-    context.ui_state.next_active_item = (UI_MAIN_WIDGET_TEXT_INPUT | 1);
-  }
-
-  // reset CONSOLENUM if invalid
-  if (CONSOLENUM >= context.config.num_registered_hosts) {
-    CONSOLENUM = -1;
-  }
-
-  // reset REMOTEIP if invalid
-  // TODO trim whitespace? too hard in c....
-  if (!REMOTEIP) {
-      REMOTEIP = "";
-  }
-
-  // cancel
-  if (btn_pressed(SCE_CTRL_CANCEL)) {
-    context.ui_state.next_active_item = UI_MAIN_WIDGET_ADD_HOST_BTN;
-    REMOTEIP = "";
-    CONSOLENUM = -1;
-    return false;
-  }
-
-  // save (if pos)
-  if (btn_pressed(SCE_CTRL_CROSS)) {
-    if ((REMOTEIP != NULL) && (strlen(REMOTEIP) != 0)) {
-      if ((CONSOLENUM >= 0) && (CONSOLENUM < context.config.num_registered_hosts)) {
-        VitaChiakiHost* rhost = context.config.registered_hosts[CONSOLENUM];
-        if (rhost) {
-          // save new host
-          save_manual_host(rhost, REMOTEIP);
-
-          // exit
-          context.ui_state.next_active_item = UI_MAIN_WIDGET_ADD_HOST_BTN;
-          REMOTEIP = "";
-          CONSOLENUM = -1;
-          return false;
-        }
-      }
-    }
-  }
-
-  return true;
-}
-
-/// Draw the form to edit an existing host
-/// @return whether the dialog should keep rendering
-bool draw_edit_host_dialog() { 
-
-  return false;
-}
 /// Render the current frame of an active stream
 /// @return whether the stream should keep rendering
 bool draw_stream() {
@@ -3045,19 +2620,6 @@ void draw_ui() {
         } else if (screen == UI_SCREEN_TYPE_REGISTER_HOST) {
           context.ui_state.next_active_item = (UI_MAIN_WIDGET_TEXT_INPUT | 0);
           if (!draw_registration_dialog()) {
-            screen = UI_SCREEN_TYPE_MAIN;
-          }
-        } else if (screen == UI_SCREEN_TYPE_ADD_HOST) {
-          if (context.ui_state.next_active_item != (UI_MAIN_WIDGET_TEXT_INPUT | 2)) {
-            if (context.ui_state.active_item != (UI_MAIN_WIDGET_TEXT_INPUT | 2)) {
-              context.ui_state.next_active_item = (UI_MAIN_WIDGET_TEXT_INPUT | 1);
-            }
-          }
-          if (!draw_add_host_dialog()) {
-            screen = UI_SCREEN_TYPE_MAIN;
-          }
-        } else if (screen == UI_SCREEN_TYPE_EDIT_HOST) {
-          if (!draw_edit_host_dialog()) {
             screen = UI_SCREEN_TYPE_MAIN;
           }
         } else if (screen == UI_SCREEN_TYPE_MESSAGES) {

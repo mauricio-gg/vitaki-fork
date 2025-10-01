@@ -55,35 +55,81 @@ All the features from ywnico's fork are included:
 
 ## Building from Source
 
-This project uses Docker for consistent builds across all platforms. The build script handles all Docker operations automatically.
+This project supports two build methods:
 
-### Prerequisites
+### Modern Build System (Recommended - Default)
+
+Uses Docker for consistent, reproducible builds across all platforms. The build script handles all Docker operations automatically.
+
+**Prerequisites:**
 - Docker installed and running
 - Git (to clone the repository)
 
-### Build Instructions
-
+**Build Commands:**
 ```bash
 # Clone the repository
 git clone https://github.com/mauricio-gg/vitaki-fork.git
 cd vitaki-fork
 
-# Release build (creates VPK in vita/build/)
+# Release build (recommended)
 ./tools/build.sh
 
-# Debug build (includes debug symbols and logging)
+# Debug build (with symbols and verbose logging)
 ./tools/build.sh debug
 
-# Open development shell (for advanced usage)
+# Development shell (for experimentation)
 ./tools/build.sh shell
 
-# Run tests
+# Run test suite
 ./tools/build.sh test
+
+# Deploy to Vita via FTP
+./tools/build.sh deploy <vita_ip>
 ```
 
-The VPK file will be created in `vita/build/` and is ready to install on your PS Vita.
+The VPK file will be created in:
+- `./build/vitaki-fork.vpk` (main build output)
+- `./VitakiForkv0.1.XXX.vpk` (versioned copy in project root)
 
-**Note:** Always use the build script - never call Docker manually. The script ensures the correct Docker image and build environment.
+**Note:** Always use `./tools/build.sh` - never call Docker manually. The script ensures the correct environment and handles versioning automatically.
+
+### Legacy Build System
+
+For compatibility with the original Chiaki build system, you can build using the root CMakeLists.txt:
+
+**Prerequisites:**
+- VitaSDK installed and configured
+- All Chiaki dependencies installed
+
+**Build Commands:**
+```bash
+mkdir build && cd build
+cmake .. -DCMAKE_TOOLCHAIN_FILE=$VITASDK/share/vita.toolchain.cmake \
+         -DCHIAKI_ENABLE_VITA=ON \
+         -DCHIAKI_ENABLE_GUI=OFF \
+         -DCHIAKI_ENABLE_CLI=OFF
+make
+```
+
+**Note:** The modern build system (Docker) is recommended as it handles all dependencies automatically.
+
+### Automated Releases
+
+This project uses GitHub Actions to automatically build and release VPK files when tags are pushed:
+
+```bash
+# Create and push a release tag
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The workflow will:
+1. Build the VPK using Docker
+2. Create a GitHub release with the VPK attached
+3. Include installation instructions and build information
+4. Archive the build artifact for 90 days
+
+You can also trigger builds manually from the Actions tab on GitHub.
 
 ## Instructions
 ### Local connection
