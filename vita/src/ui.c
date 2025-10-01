@@ -1478,9 +1478,7 @@ UIScreenType draw_main_menu() {
 
 typedef enum {
   SETTINGS_TAB_STREAMING = 0,
-  SETTINGS_TAB_VIDEO = 1,
-  SETTINGS_TAB_NETWORK = 2,
-  SETTINGS_TAB_COUNT = 3  // Removed Controller tab - moved to dedicated Controller screen
+  SETTINGS_TAB_COUNT = 1  // Only Streaming tab (removed Video/Network - no backend support)
 } SettingsTab;
 
 typedef struct {
@@ -1492,17 +1490,13 @@ typedef struct {
 
 static SettingsState settings_state = {0};
 
-// Tab colors (Blue, Green, Orange) - Controller moved to dedicated screen
+// Tab color (Blue) - Only Streaming settings, Video/Network removed (no backend support)
 static uint32_t settings_tab_colors[SETTINGS_TAB_COUNT] = {
   RGBA8(0x00, 0x70, 0xCC, 255), // Blue - Streaming
-  RGBA8(0x2D, 0x8A, 0x3E, 255), // Green - Video
-  RGBA8(0xD9, 0x77, 0x06, 255), // Orange - Network
 };
 
 static const char* settings_tab_names[SETTINGS_TAB_COUNT] = {
-  "Streaming Quality",
-  "Video Settings",
-  "Network Settings"
+  "Streaming Quality"
 };
 
 // Resolution/FPS option strings for dropdowns
@@ -1547,72 +1541,18 @@ static void draw_settings_streaming_tab(int content_x, int content_y, int conten
                 false, settings_state.selected_item == 1);
   y += item_h + item_spacing;
 
-  // Hardware Decode toggle (STUB - always on)
-  // TODO(PHASE2-STUB): Hardware decode toggle - Always on for now
-  draw_toggle_switch(content_x + content_w - 70, y + (item_h - 30)/2, 60, 30,
-                     true, settings_state.selected_item == 2);
-  vita2d_font_draw_text(font, content_x + 15, y + item_h/2 + 6,
-                        UI_COLOR_TEXT_PRIMARY, FONT_SIZE_BODY, "Hardware Decode");
-  y += item_h + item_spacing;
-
   // Auto Discovery toggle
   draw_toggle_switch(content_x + content_w - 70, y + (item_h - 30)/2, 60, 30,
-                     context.config.auto_discovery, settings_state.selected_item == 3);
+                     context.config.auto_discovery, settings_state.selected_item == 2);
   vita2d_font_draw_text(font, content_x + 15, y + item_h/2 + 6,
                         UI_COLOR_TEXT_PRIMARY, FONT_SIZE_BODY, "Auto Discovery");
   y += item_h + item_spacing;
 
   // Show Latency toggle
   draw_toggle_switch(content_x + content_w - 70, y + (item_h - 30)/2, 60, 30,
-                     context.config.show_latency, settings_state.selected_item == 4);
+                     context.config.show_latency, settings_state.selected_item == 3);
   vita2d_font_draw_text(font, content_x + 15, y + item_h/2 + 6,
                         UI_COLOR_TEXT_PRIMARY, FONT_SIZE_BODY, "Show Latency");
-}
-
-/// Draw Video Settings tab content
-static void draw_settings_video_tab(int content_x, int content_y, int content_w) {
-  int item_h = 50;
-  int item_spacing = 10;
-  int y = content_y;
-
-  // TODO(PHASE2-STUB): Aspect Ratio - Not implemented
-  draw_dropdown(content_x, y, content_w, item_h, "Aspect Ratio", "16:9",
-                false, settings_state.selected_item == 0);
-  y += item_h + item_spacing;
-
-  // TODO(PHASE2-STUB): Brightness - Not implemented
-  draw_toggle_switch(content_x + content_w - 70, y + (item_h - 30)/2, 60, 30,
-                     false, settings_state.selected_item == 1);
-  vita2d_font_draw_text(font, content_x + 15, y + item_h/2 + 6,
-                        UI_COLOR_TEXT_SECONDARY, FONT_SIZE_BODY, "Brightness (Stub)");
-  y += item_h + item_spacing;
-
-  // TODO(PHASE2-STUB): Video Smoothing - Not implemented
-  draw_toggle_switch(content_x + content_w - 70, y + (item_h - 30)/2, 60, 30,
-                     false, settings_state.selected_item == 2);
-  vita2d_font_draw_text(font, content_x + 15, y + item_h/2 + 6,
-                        UI_COLOR_TEXT_SECONDARY, FONT_SIZE_BODY, "Video Smoothing (Stub)");
-}
-
-/// Draw Network Settings tab content
-static void draw_settings_network_tab(int content_x, int content_y, int content_w) {
-  int item_h = 50;
-  int item_spacing = 10;
-  int y = content_y;
-
-  // TODO(PHASE2-STUB): Connection Type - Not implemented
-  draw_dropdown(content_x, y, content_w, item_h, "Connection Type", "Local",
-                false, settings_state.selected_item == 0);
-  y += item_h + item_spacing;
-
-  // TODO(PHASE2-STUB): Network Timeout - Not implemented
-  draw_dropdown(content_x, y, content_w, item_h, "Network Timeout", "10s",
-                false, settings_state.selected_item == 1);
-  y += item_h + item_spacing;
-
-  // TODO(PHASE2-STUB): MTU Size - Not implemented
-  draw_dropdown(content_x, y, content_w, item_h, "MTU Size", "Auto",
-                false, settings_state.selected_item == 2);
 }
 
 /// Draw Controller Settings tab content
@@ -1655,57 +1595,27 @@ bool draw_settings() {
   int content_y = 100;
   int content_w = VITA_WIDTH - WAVE_NAV_WIDTH - 80;
 
-  // Settings title
-  vita2d_font_draw_text(font, content_x, 50, UI_COLOR_TEXT_PRIMARY, FONT_SIZE_HEADER, "Settings");
+  // Settings title (streaming settings only now)
+  vita2d_font_draw_text(font, content_x, 50, UI_COLOR_TEXT_PRIMARY, FONT_SIZE_HEADER, "Streaming Settings");
 
-  // Tab bar
-  int tab_bar_y = 70;
-  int tab_bar_h = 40;
-  draw_tab_bar(content_x, tab_bar_y, content_w, tab_bar_h,
-               settings_tab_names, settings_tab_colors,
-               SETTINGS_TAB_COUNT, settings_state.current_tab);
-
-  // Content area for current tab
-  int tab_content_y = tab_bar_y + tab_bar_h + 20;
+  // Content area (no tabs needed - only one section)
+  int tab_content_y = 90;
   int tab_content_w = content_w - 40;
   int tab_content_x = content_x + 20;
 
-  // Draw current tab content
-  switch (settings_state.current_tab) {
-    case SETTINGS_TAB_STREAMING:
-      draw_settings_streaming_tab(tab_content_x, tab_content_y, tab_content_w);
-      break;
-    case SETTINGS_TAB_VIDEO:
-      draw_settings_video_tab(tab_content_x, tab_content_y, tab_content_w);
-      break;
-    case SETTINGS_TAB_NETWORK:
-      draw_settings_network_tab(tab_content_x, tab_content_y, tab_content_w);
-      break;
-  }
+  // Draw streaming settings content
+  draw_settings_streaming_tab(tab_content_x, tab_content_y, tab_content_w);
 
   // Control hints at bottom
   int hint_y = VITA_HEIGHT - 25;
   int hint_x = WAVE_NAV_WIDTH + 20;
   vita2d_font_draw_text(font, hint_x, hint_y, UI_COLOR_TEXT_TERTIARY, FONT_SIZE_SMALL,
-    "L1/R1: Switch Tab | Up/Down: Navigate | X: Toggle/Select | Circle: Back");
+    "Up/Down: Navigate | X: Toggle/Select | Circle: Back");
 
   // === INPUT HANDLING ===
 
-  // L1/R1: Switch tabs
-  if (btn_pressed(SCE_CTRL_LTRIGGER)) {
-    settings_state.current_tab = (settings_state.current_tab - 1 + SETTINGS_TAB_COUNT) % SETTINGS_TAB_COUNT;
-    settings_state.selected_item = 0; // Reset selection when switching tabs
-  } else if (btn_pressed(SCE_CTRL_RTRIGGER)) {
-    settings_state.current_tab = (settings_state.current_tab + 1) % SETTINGS_TAB_COUNT;
-    settings_state.selected_item = 0;
-  }
-
-  // Determine max items for current tab
-  int max_items = 5; // Streaming tab has 5 items now (added Show Latency)
-  if (settings_state.current_tab == SETTINGS_TAB_VIDEO ||
-      settings_state.current_tab == SETTINGS_TAB_NETWORK) {
-    max_items = 3;
-  }
+  // No tab switching needed - only one section
+  int max_items = 4; // Streaming tab: Resolution, FPS, Auto Discovery, Show Latency
 
   // Up/Down: Navigate items
   if (btn_pressed(SCE_CTRL_UP)) {
@@ -1716,9 +1626,7 @@ bool draw_settings() {
 
   // X: Activate selected item (toggle or cycle dropdown)
   if (btn_pressed(SCE_CTRL_CROSS)) {
-    switch (settings_state.current_tab) {
-      case SETTINGS_TAB_STREAMING:
-        if (settings_state.selected_item == 0) {
+    if (settings_state.selected_item == 0) {
           // Cycle resolution: 360p → 540p → 720p → 1080p → 360p
           switch (context.config.resolution) {
             case CHIAKI_VIDEO_RESOLUTION_PRESET_360p:
@@ -1742,21 +1650,13 @@ bool draw_settings() {
             CHIAKI_VIDEO_FPS_PRESET_60 : CHIAKI_VIDEO_FPS_PRESET_30;
           config_serialize(&context.config);
         } else if (settings_state.selected_item == 2) {
-          // Hardware decode toggle (stub - do nothing)
-        } else if (settings_state.selected_item == 3) {
           // Auto discovery toggle
           context.config.auto_discovery = !context.config.auto_discovery;
           config_serialize(&context.config);
-        } else if (settings_state.selected_item == 4) {
-          // Show latency toggle
-          context.config.show_latency = !context.config.show_latency;
-          config_serialize(&context.config);
-        }
-        break;
-
-      // Video and Network tabs have stubs - do nothing
-      default:
-        break;
+    } else if (settings_state.selected_item == 3) {
+      // Show latency toggle
+      context.config.show_latency = !context.config.show_latency;
+      config_serialize(&context.config);
     }
   }
 
@@ -2242,18 +2142,13 @@ static void draw_controller_settings_tab(int content_x, int content_y, int conte
                         UI_COLOR_TEXT_PRIMARY, FONT_SIZE_BODY, "Circle Button Confirm");
   y += item_h + item_spacing;
 
-  // TODO(PHASE2-STUB): Motion Controls - Not implemented
+  // Motion Controls - requires gyro backend integration (Phase 4)
   draw_toggle_switch(content_x + content_w - 70, y + (item_h - 30)/2, 60, 30,
                      false, controller_state.selected_item == 1);
   vita2d_font_draw_text(font, content_x + 15, y + item_h/2 + 6,
-                        UI_COLOR_TEXT_SECONDARY, FONT_SIZE_BODY, "Motion Controls (Stub)");
-  y += item_h + item_spacing;
-
-  // TODO(PHASE2-STUB): Touchpad as Buttons - Not implemented
-  draw_toggle_switch(content_x + content_w - 70, y + (item_h - 30)/2, 60, 30,
-                     false, controller_state.selected_item == 2);
-  vita2d_font_draw_text(font, content_x + 15, y + item_h/2 + 6,
-                        UI_COLOR_TEXT_SECONDARY, FONT_SIZE_BODY, "Touchpad as Buttons (Stub)");
+                        UI_COLOR_TEXT_TERTIARY, FONT_SIZE_BODY, "Motion Controls");
+  vita2d_font_draw_text(font, content_x + content_w - 165, y + item_h/2 + 6,
+                        UI_COLOR_TEXT_TERTIARY, FONT_SIZE_SMALL, "(Coming Soon)");
 }
 
 /// Main Controller Configuration screen with tabs
@@ -2341,8 +2236,8 @@ bool draw_controller_config_screen() {
       config_serialize(&context.config);
     }
   } else if (controller_state.current_tab == CONTROLLER_TAB_SETTINGS) {
-    // Up/Down: Navigate items
-    int max_items = 3;
+    // Up/Down: Navigate items (Circle Button Confirm and Motion Controls)
+    int max_items = 2;
     if (btn_pressed(SCE_CTRL_UP)) {
       controller_state.selected_item = (controller_state.selected_item - 1 + max_items) % max_items;
     } else if (btn_pressed(SCE_CTRL_DOWN)) {
@@ -2356,7 +2251,7 @@ bool draw_controller_config_screen() {
         context.config.circle_btn_confirm = !context.config.circle_btn_confirm;
         config_serialize(&context.config);
       }
-      // Items 1 and 2 are stubs - do nothing
+      // Item 1 (Motion Controls) is not yet implemented - do nothing
     }
   }
 
