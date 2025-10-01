@@ -874,7 +874,7 @@ UIScreenType handle_vitarps5_touch_input(int num_hosts) {
 
                 if (discovered && !at_rest && registered) {
                   host_stream(context.active_host);
-                  return UI_SCREEN_TYPE_MESSAGES;
+                  return UI_SCREEN_TYPE_STREAM;
                 } else if (at_rest) {
                   host_wakeup(context.active_host);
                 } else if (!registered) {
@@ -1433,7 +1433,7 @@ UIScreenType draw_main_menu() {
               // Note: User will need to press X again after console wakes
             } else if (registered) {
               // Ready console - start streaming
-              next_screen = UI_SCREEN_TYPE_MESSAGES;
+              next_screen = UI_SCREEN_TYPE_STREAM;
               host_stream(context.active_host);
             }
             break;
@@ -2671,10 +2671,18 @@ bool draw_edit_host_dialog() {
 }
 /// Render the current frame of an active stream
 /// @return whether the stream should keep rendering
-bool draw_stream() { 
-  if (context.stream.is_streaming) context.stream.is_streaming = false;
-  
-  return false;
+bool draw_stream() {
+  // Stream is rendering - just keep the screen clear and let video callback render frames
+  // Return true to stay on stream screen until user exits
+  vita2d_set_clear_color(RGBA8(0x00, 0x00, 0x00, 0xFF));
+
+  // Circle button exits stream
+  if (btn_pressed(SCE_CTRL_CIRCLE)) {
+    context.stream.is_streaming = false;
+    return false;  // Exit to main menu
+  }
+
+  return true;  // Stay on stream screen
 }
 
 /// Draw the debug messages screen
