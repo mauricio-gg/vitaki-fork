@@ -1,7 +1,7 @@
 include("$ENV{VITASDK}/share/vita.cmake" REQUIRED)
 
-set(VITA_APP_NAME "Vitaki")
-set(VITA_TITLEID  "CHIAKI001")
+set(VITA_APP_NAME "VitaRPS5")
+set(VITA_TITLEID  "VRPS50001")  # VitaRPS5 unique ID (changed from CHIAKI001 to force LiveArea refresh)
 # TODO: Make it dynamic
 set(VITA_VERSION "00.06")
 

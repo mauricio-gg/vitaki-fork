@@ -9,6 +9,7 @@
 #include <psp2/message_dialog.h>
 #include <psp2/registrymgr.h>
 #include <psp2/ime_dialog.h>
+#include <psp2/kernel/processmgr.h>
 #include <chiaki/base64.h>
 
 #include "context.h"
@@ -37,11 +38,11 @@
 #define UI_COLOR_ACCENT_PURPLE 0xFFB0279C       // Accent Purple #9C27B0
 #define UI_COLOR_SHADOW 0x3C000000           // Semi-transparent black for shadows
 
-// Particle colors (ABGR with alpha for transparency)
-#define PARTICLE_COLOR_RED    0x80FF5555  // Semi-transparent red
-#define PARTICLE_COLOR_GREEN  0x8055FF55  // Semi-transparent green
-#define PARTICLE_COLOR_BLUE   0x805555FF  // Semi-transparent blue
-#define PARTICLE_COLOR_ORANGE 0x8055AAFF  // Semi-transparent orange
+// Particle colors (ABGR with alpha for transparency - 80% opacity = 0xCC)
+#define PARTICLE_COLOR_RED    0xCCFF5555  // 80% transparent red
+#define PARTICLE_COLOR_GREEN  0xCC55FF55  // 80% transparent green
+#define PARTICLE_COLOR_BLUE   0xCC5555FF  // 80% transparent blue
+#define PARTICLE_COLOR_ORANGE 0xCC55AAFF  // 80% transparent orange
 
 #define VITA_WIDTH 960
 #define VITA_HEIGHT 544
@@ -53,7 +54,7 @@
 #define FONT_SIZE_SMALL 16       // Secondary text, hints (MINIMUM - 16pt)
 
 // VitaRPS5 UI Layout Constants
-#define WAVE_NAV_WIDTH 130
+#define WAVE_NAV_WIDTH 104  // 20% thinner than original 130px
 #define CONTENT_AREA_X WAVE_NAV_WIDTH
 #define CONTENT_AREA_WIDTH (VITA_WIDTH - WAVE_NAV_WIDTH)
 #define PARTICLE_COUNT 12
@@ -108,11 +109,13 @@ static Particle particles[PARTICLE_COUNT];
 static bool particles_initialized = false;
 
 // Wave navigation state
-#define WAVE_NAV_WIDTH 130
 #define WAVE_NAV_ICON_SIZE 48
-#define WAVE_NAV_ICON_X 41
-#define WAVE_NAV_ICON_START_Y 180
-#define WAVE_NAV_ICON_SPACING 60
+#define WAVE_NAV_ICON_X 52  // Centered on nav bar (WAVE_NAV_WIDTH / 2 = 104 / 2 = 52)
+#define WAVE_NAV_ICON_SPACING 80  // Spacing between icon centers
+// Vertically center 4 icons: 3 gaps of 80px = 240px total span between first and last
+// Center Y = VITA_HEIGHT / 2 = 272px
+// First icon Y = 272px - (240px / 2) = 272px - 120px = 152px
+#define WAVE_NAV_ICON_START_Y 152
 
 static int selected_nav_icon = 0;  // 0=Play, 1=Settings, 2=Controller, 3=Profile
 static float wave_animation_time = 0.0f;
@@ -134,6 +137,18 @@ typedef struct {
 } ConsoleCardInfo;
 
 static int selected_console_index = 0;
+
+// Console card cache to prevent flickering during discovery updates
+typedef struct {
+  ConsoleCardInfo cards[MAX_NUM_HOSTS];
+  int num_cards;
+  uint64_t last_update_time;  // Microseconds since epoch
+} ConsoleCardCache;
+
+static ConsoleCardCache card_cache = {0};
+#define CARD_CACHE_UPDATE_INTERVAL_US (10 * 1000000)  // 10 seconds in microseconds
+
+// Wave navigation sidebar uses simple colored bar (no animation)
 
 // PIN entry state for VitaRPS5-style registration
 typedef struct {
@@ -413,9 +428,9 @@ void init_particles() {
     particles[i].y = -(float)(rand() % 200);  // Start above screen (0 to -200)
     particles[i].vx = ((float)(rand() % 100) / 100.0f - 0.5f) * 0.5f;  // Slight horizontal drift
     particles[i].vy = ((float)(rand() % 100) / 100.0f + 0.3f) * 1.2f;  // Downward (positive Y, gravity)
-    particles[i].scale = 0.15f + ((float)(rand() % 100) / 100.0f) * 0.25f;
+    particles[i].scale = 0.30f + ((float)(rand() % 100) / 100.0f) * 0.50f;  // 2x bigger: 0.30 to 0.80
     particles[i].rotation = (float)(rand() % 360);
-    particles[i].rotation_speed = ((float)(rand() % 100) / 100.0f - 0.5f) * 2.0f;
+    particles[i].rotation_speed = ((float)(rand() % 100) / 100.0f - 0.5f) * 1.0f;  // Half speed: -0.5 to +0.5
     particles[i].symbol_type = rand() % 4;
 
     // Assign color based on symbol
@@ -481,15 +496,12 @@ void render_particles() {
   }
 }
 
-/// Render VitaRPS5 wave navigation sidebar
+/// Render VitaRPS5 navigation sidebar with simple colored bar
 void render_wave_navigation() {
-  // Draw wave background textures
-  if (wave_top) {
-    vita2d_draw_texture(wave_top, 0, 0);
-  }
-  if (wave_bottom) {
-    vita2d_draw_texture(wave_bottom, 0, VITA_HEIGHT - vita2d_texture_get_height(wave_bottom));
-  }
+  // Draw simple teal/cyan colored bar for navigation sidebar
+  // Color matches the original wave texture (teal/cyan)
+  uint32_t nav_bar_color = RGBA8(78, 133, 139, 255);  // Teal color from wave texture
+  vita2d_draw_rectangle(0, 0, WAVE_NAV_WIDTH, VITA_HEIGHT, nav_bar_color);
 
   // Navigation icons array
   vita2d_texture* nav_icons[4] = {
@@ -674,35 +686,65 @@ void render_console_card(ConsoleCardInfo* console, int x, int y, bool selected) 
   }
 }
 
-/// Render console cards in grid layout
-void render_console_grid() {
-  int screen_center_x = VITA_WIDTH / 2;
-  int content_area_x = WAVE_NAV_WIDTH + ((VITA_WIDTH - WAVE_NAV_WIDTH) / 2);
+/// Update console card cache to prevent flickering during discovery updates
+void update_console_card_cache(bool force_update) {
+  uint64_t current_time = sceKernelGetProcessTimeWide();
 
-  // Header text
-  vita2d_font_draw_text(font, content_area_x - 150, 100, UI_COLOR_TEXT_PRIMARY, 24,
-    "Which do you want to connect?");
+  // Only update cache if enough time has passed or if forced
+  if (!force_update &&
+      (current_time - card_cache.last_update_time) < CARD_CACHE_UPDATE_INTERVAL_US) {
+    return;
+  }
 
+  // Count current valid hosts
   int num_hosts = 0;
-  ConsoleCardInfo cards[MAX_NUM_HOSTS];
+  ConsoleCardInfo temp_cards[MAX_NUM_HOSTS];
 
-  // Map all vitaki hosts to console cards
   for (int i = 0; i < MAX_NUM_HOSTS; i++) {
     if (context.hosts[i]) {
-      map_host_to_console_card(context.hosts[i], &cards[num_hosts]);
+      map_host_to_console_card(context.hosts[i], &temp_cards[num_hosts]);
       num_hosts++;
     }
   }
 
-  // Render console cards (if any exist)
+  // Only update cache if we have valid hosts (prevents storing empty state during discovery updates)
   if (num_hosts > 0) {
-    for (int i = 0; i < num_hosts; i++) {
-      int card_x = content_area_x - (CONSOLE_CARD_WIDTH / 2);
-      int card_y = CONSOLE_CARD_START_Y + (i * CONSOLE_CARD_SPACING);
+    card_cache.num_cards = num_hosts;
+    memcpy(card_cache.cards, temp_cards, sizeof(ConsoleCardInfo) * num_hosts);
+    card_cache.last_update_time = current_time;
+  }
+}
+
+/// Render console cards in grid layout
+void render_console_grid() {
+  // Center based on FULL screen width (not just content area)
+  int screen_center_x = VITA_WIDTH / 2;
+  int screen_center_y = VITA_HEIGHT / 2;
+
+  // Update cache (respects 10-second interval)
+  update_console_card_cache(false);
+
+  // Calculate card position - centered on full screen
+  int card_y = screen_center_y - (CONSOLE_CARD_HEIGHT / 2);
+  int card_x = screen_center_x - (CONSOLE_CARD_WIDTH / 2);
+
+  // Header text - centered horizontally on full screen above the card
+  const char* header_text = "Which do you want to connect?";
+  int text_width = vita2d_font_text_width(font, 24, header_text);
+  int text_x = screen_center_x - (text_width / 2);
+  int text_y = card_y - 50;  // Position text 50px above card
+
+  vita2d_font_draw_text(font, text_x, text_y, UI_COLOR_TEXT_PRIMARY, 24, header_text);
+
+  // Use cached cards to prevent flickering
+  if (card_cache.num_cards > 0) {
+    for (int i = 0; i < card_cache.num_cards; i++) {
+      // For multiple cards, stack them vertically centered around screen center
+      int this_card_y = card_y + (i * CONSOLE_CARD_SPACING);
 
       // Only show selection highlight if console cards have focus
       bool selected = (i == selected_console_index && current_focus == FOCUS_CONSOLE_CARDS);
-      render_console_card(&cards[i], card_x, card_y, selected);
+      render_console_card(&card_cache.cards[i], card_x, this_card_y, selected);
     }
   }
 }
@@ -712,13 +754,15 @@ void draw_play_icon(int center_x, int center_y, int size) {
   uint32_t white = RGBA8(255, 255, 255, 255);
   int half_size = size / 2;
 
+  // Triangle centroid is at 1/3 from left edge for proper visual centering
+  // Offset the triangle left by size/6 to center it visually
+  int offset = size / 6;
+
   // Draw filled triangle using horizontal lines
-  // Triangle points: left (center_x - half_size, center_y),
-  //                  top-right (center_x + half_size, center_y - half_size)
-  //                  bottom-right (center_x + half_size, center_y + half_size)
+  // Triangle points adjusted for visual centering
   for (int y = -half_size; y <= half_size; y++) {
-    int x_start = center_x - half_size + abs(y);  // Left edge moves right as we go away from center
-    int x_end = center_x + half_size;              // Right edge is fixed
+    int x_start = center_x - half_size + abs(y) - offset;  // Left edge moves right as we go away from center
+    int x_end = center_x + half_size - offset;              // Right edge is fixed
     int width = x_end - x_start;
     if (width > 0) {
       vita2d_draw_rectangle(x_start, center_y + y, width, 1, white);
@@ -1096,7 +1140,7 @@ UIScreenType draw_main_menu() {
   update_particles();
   render_particles();
 
-  // Render VitaRPS5 wave navigation sidebar
+  // Render VitaRPS5 navigation sidebar
   render_wave_navigation();
 
   // Render VitaRPS5 console cards instead of host tiles
@@ -1371,7 +1415,7 @@ static void draw_settings_controller_tab(int content_x, int content_y, int conte
 /// Main Settings screen rendering function
 /// @return whether the dialog should keep rendering
 bool draw_settings() {
-  // Render particle background and wave navigation
+  // Render particle background and navigation sidebar
   update_particles();
   render_particles();
   render_wave_navigation();
@@ -1676,7 +1720,7 @@ static void draw_registration_section(int x, int y, int width, int height, bool 
 /// Main Profile & Registration screen
 /// @return next screen type to display
 UIScreenType draw_profile_screen() {
-  // Render particle background and wave navigation
+  // Render particle background and navigation sidebar
   update_particles();
   render_particles();
   render_wave_navigation();
@@ -1983,7 +2027,7 @@ static void draw_controller_settings_tab(int content_x, int content_y, int conte
 
 /// Main Controller Configuration screen with tabs
 bool draw_controller_config_screen() {
-  // Render particle background and wave navigation
+  // Render particle background and navigation sidebar
   update_particles();
   render_particles();
   render_wave_navigation();
