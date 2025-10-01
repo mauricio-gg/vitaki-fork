@@ -12,7 +12,7 @@ SOURCE_DIR="./vita/src"
 
 # Version configuration
 VERSION_PHASE="0.1"
-VERSION_ITERATION="104"
+VERSION_ITERATION="113"
 
 # Colors for output
 RED='\033[0;31m'
@@ -92,9 +92,9 @@ pull_docker_image() {
 generate_version_header() {
     log_info "Generating version header..."
 
-    # Create version header file in vita subdirectory
-    mkdir -p vita/src/core
-    cat > vita/src/core/version.h << EOF
+    # Create version header file in include directory
+    mkdir -p vita/include
+    cat > vita/include/version.h << EOF
 #ifndef VITAKI_FORK_VERSION_H
 #define VITAKI_FORK_VERSION_H
 
