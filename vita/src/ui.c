@@ -46,6 +46,12 @@
 #define VITA_WIDTH 960
 #define VITA_HEIGHT 544
 
+// Font Size Hierarchy (Phase 2 Standards)
+#define FONT_SIZE_HEADER 24      // Screen titles, main headers
+#define FONT_SIZE_SUBHEADER 18   // Section titles, tab labels
+#define FONT_SIZE_BODY 16        // Primary content text
+#define FONT_SIZE_SMALL 14       // Secondary text, hints (MINIMUM)
+
 // VitaRPS5 UI Layout Constants
 #define WAVE_NAV_WIDTH 130
 #define CONTENT_AREA_X WAVE_NAV_WIDTH
@@ -354,28 +360,17 @@ static void draw_tab_bar(int x, int y, int width, int height,
   for (int i = 0; i < num_tabs; i++) {
     int tab_x = x + (i * tab_width);
 
-    // Tab background (brighter if selected)
-    uint32_t tab_color;
-    if (i == selected) {
-      tab_color = colors[i];
-    } else {
-      // Dim the color for non-selected tabs
-      uint8_t r = (uint8_t)((colors[i] >> 24) * 0.5f);
-      uint8_t g = (uint8_t)(((colors[i] >> 16) & 0xFF) * 0.5f);
-      uint8_t b = (uint8_t)(((colors[i] >> 8) & 0xFF) * 0.5f);
-      tab_color = RGBA8(r, g, b, 200);
-    }
+    // Tab background - flat color, no dimming
+    draw_rounded_rectangle(tab_x, y, tab_width - 4, height, 8, colors[i]);
 
-    draw_rounded_rectangle(tab_x, y, tab_width - 4, height, 8, tab_color);
-
-    // Tab text (centered)
-    int text_width = vita2d_font_text_width(font, 16, tabs[i]);
+    // Tab text (centered) - use subheader font size
+    int text_width = vita2d_font_text_width(font, FONT_SIZE_SUBHEADER, tabs[i]);
     int text_x = tab_x + (tab_width - text_width) / 2;
     int text_y = y + height/2 + 6;
 
-    vita2d_font_draw_text(font, text_x, text_y, UI_COLOR_TEXT_PRIMARY, 16, tabs[i]);
+    vita2d_font_draw_text(font, text_x, text_y, UI_COLOR_TEXT_PRIMARY, FONT_SIZE_SUBHEADER, tabs[i]);
 
-    // Selection indicator (bottom bar)
+    // Selection indicator (bottom bar) - only visual difference
     if (i == selected) {
       vita2d_draw_rectangle(tab_x + 2, y + height - 3, tab_width - 8, 3, UI_COLOR_PRIMARY_BLUE);
     }
@@ -1485,8 +1480,7 @@ typedef enum {
   SETTINGS_TAB_STREAMING = 0,
   SETTINGS_TAB_VIDEO = 1,
   SETTINGS_TAB_NETWORK = 2,
-  SETTINGS_TAB_CONTROLLER = 3,
-  SETTINGS_TAB_COUNT = 4
+  SETTINGS_TAB_COUNT = 3  // Removed Controller tab - moved to dedicated Controller screen
 } SettingsTab;
 
 typedef struct {
@@ -1498,19 +1492,17 @@ typedef struct {
 
 static SettingsState settings_state = {0};
 
-// Tab colors (Blue, Green, Orange, Purple)
+// Tab colors (Blue, Green, Orange) - Controller moved to dedicated screen
 static uint32_t settings_tab_colors[SETTINGS_TAB_COUNT] = {
   RGBA8(0x00, 0x70, 0xCC, 255), // Blue - Streaming
   RGBA8(0x2D, 0x8A, 0x3E, 255), // Green - Video
   RGBA8(0xD9, 0x77, 0x06, 255), // Orange - Network
-  RGBA8(0x7C, 0x3A, 0xED, 255)  // Purple - Controller
 };
 
 static const char* settings_tab_names[SETTINGS_TAB_COUNT] = {
   "Streaming Quality",
   "Video Settings",
-  "Network Settings",
-  "Controller Settings"
+  "Network Settings"
 };
 
 // Resolution/FPS option strings for dropdowns
@@ -1558,14 +1550,14 @@ static void draw_settings_streaming_tab(int content_x, int content_y, int conten
   draw_toggle_switch(content_x + content_w - 70, y + (item_h - 30)/2, 60, 30,
                      true, settings_state.selected_item == 2);
   vita2d_font_draw_text(font, content_x + 15, y + item_h/2 + 6,
-                        UI_COLOR_TEXT_PRIMARY, 16, "Hardware Decode");
+                        UI_COLOR_TEXT_PRIMARY, FONT_SIZE_BODY, "Hardware Decode");
   y += item_h + item_spacing;
 
   // Auto Discovery toggle
   draw_toggle_switch(content_x + content_w - 70, y + (item_h - 30)/2, 60, 30,
                      context.config.auto_discovery, settings_state.selected_item == 3);
   vita2d_font_draw_text(font, content_x + 15, y + item_h/2 + 6,
-                        UI_COLOR_TEXT_PRIMARY, 16, "Auto Discovery");
+                        UI_COLOR_TEXT_PRIMARY, FONT_SIZE_BODY, "Auto Discovery");
 }
 
 /// Draw Video Settings tab content
@@ -1583,14 +1575,14 @@ static void draw_settings_video_tab(int content_x, int content_y, int content_w)
   draw_toggle_switch(content_x + content_w - 70, y + (item_h - 30)/2, 60, 30,
                      false, settings_state.selected_item == 1);
   vita2d_font_draw_text(font, content_x + 15, y + item_h/2 + 6,
-                        UI_COLOR_TEXT_SECONDARY, 16, "Brightness (Stub)");
+                        UI_COLOR_TEXT_SECONDARY, FONT_SIZE_BODY, "Brightness (Stub)");
   y += item_h + item_spacing;
 
   // TODO(PHASE2-STUB): Video Smoothing - Not implemented
   draw_toggle_switch(content_x + content_w - 70, y + (item_h - 30)/2, 60, 30,
                      false, settings_state.selected_item == 2);
   vita2d_font_draw_text(font, content_x + 15, y + item_h/2 + 6,
-                        UI_COLOR_TEXT_SECONDARY, 16, "Video Smoothing (Stub)");
+                        UI_COLOR_TEXT_SECONDARY, FONT_SIZE_BODY, "Video Smoothing (Stub)");
 }
 
 /// Draw Network Settings tab content
@@ -1655,7 +1647,7 @@ bool draw_settings() {
   int content_w = VITA_WIDTH - WAVE_NAV_WIDTH - 80;
 
   // Settings title
-  vita2d_font_draw_text(font, content_x, 50, UI_COLOR_TEXT_PRIMARY, 26, "Settings");
+  vita2d_font_draw_text(font, content_x, 50, UI_COLOR_TEXT_PRIMARY, FONT_SIZE_HEADER, "Settings");
 
   // Tab bar
   int tab_bar_y = 70;
@@ -1680,15 +1672,12 @@ bool draw_settings() {
     case SETTINGS_TAB_NETWORK:
       draw_settings_network_tab(tab_content_x, tab_content_y, tab_content_w);
       break;
-    case SETTINGS_TAB_CONTROLLER:
-      draw_settings_controller_tab(tab_content_x, tab_content_y, tab_content_w);
-      break;
   }
 
   // Control hints at bottom
   int hint_y = VITA_HEIGHT - 25;
   int hint_x = WAVE_NAV_WIDTH + 20;
-  vita2d_font_draw_text(font, hint_x, hint_y, UI_COLOR_TEXT_TERTIARY, 16,
+  vita2d_font_draw_text(font, hint_x, hint_y, UI_COLOR_TEXT_TERTIARY, FONT_SIZE_SMALL,
     "L1/R1: Switch Tab | Up/Down: Navigate | X: Toggle/Select | Circle: Back");
 
   // === INPUT HANDLING ===
@@ -1735,26 +1724,6 @@ bool draw_settings() {
         } else if (settings_state.selected_item == 3) {
           // Auto discovery toggle
           context.config.auto_discovery = !context.config.auto_discovery;
-          config_serialize(&context.config);
-        }
-        break;
-
-      case SETTINGS_TAB_CONTROLLER:
-        if (settings_state.selected_item == 0) {
-          // Cycle controller map (0-7, then 25, then 99)
-          if (context.config.controller_map_id < 7) {
-            context.config.controller_map_id++;
-          } else if (context.config.controller_map_id == 7) {
-            context.config.controller_map_id = 25;
-          } else if (context.config.controller_map_id == 25) {
-            context.config.controller_map_id = 99;
-          } else {
-            context.config.controller_map_id = 0;
-          }
-          config_serialize(&context.config);
-        } else if (settings_state.selected_item == 1) {
-          // Circle button confirm toggle
-          context.config.circle_btn_confirm = !context.config.circle_btn_confirm;
           config_serialize(&context.config);
         }
         break;
