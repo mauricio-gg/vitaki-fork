@@ -579,22 +579,33 @@ void map_host_to_console_card(VitaChiakiHost* host, ConsoleCardInfo* card) {
 void render_console_card(ConsoleCardInfo* console, int x, int y, bool selected) {
   if (!console) return;
 
-  // Selection highlight (PlayStation Blue border)
-  if (selected) {
+  bool is_registered = console->is_registered;
+  bool is_discovered = console->is_discovered;
+  bool is_unpaired = is_discovered && !is_registered;
+
+  // Status border color (awake=light blue, asleep=yellow, unpaired=grey)
+  uint32_t border_color = UI_COLOR_PRIMARY_BLUE;  // Default selection blue
+  if (!selected && is_unpaired) {
+    border_color = RGBA8(120, 120, 120, 255);  // Grey for unpaired
+  } else if (!selected && console->state == 1) {  // Ready/Awake
+    border_color = RGBA8(52, 144, 255, 255);  // Light blue
+  } else if (!selected && console->state == 2) {  // Standby/Asleep
+    border_color = RGBA8(255, 193, 7, 255);  // Yellow
+  }
+
+  // Draw status border
+  if (!selected || is_unpaired) {
+    draw_rounded_rectangle(x - 3, y - 3, CONSOLE_CARD_WIDTH + 6, CONSOLE_CARD_HEIGHT + 6, 12, border_color);
+  }
+
+  // Selection highlight (PlayStation Blue border, only for paired consoles)
+  if (selected && !is_unpaired) {
     draw_rounded_rectangle(x - 4, y - 4, CONSOLE_CARD_WIDTH + 8, CONSOLE_CARD_HEIGHT + 8, 12, UI_COLOR_PRIMARY_BLUE);
   }
 
-  // Card background with shadow
-  draw_card_with_shadow(x, y, CONSOLE_CARD_WIDTH, CONSOLE_CARD_HEIGHT, 12, UI_COLOR_CARD_BG);
-
-  // Console state glow (if Ready or Standby)
-  if (console->state == 1) {  // Ready - Blue glow
-    draw_rounded_rectangle(x - 2, y - 2, CONSOLE_CARD_WIDTH + 4, CONSOLE_CARD_HEIGHT + 4, 10,
-      RGBA8(52, 144, 255, 120));  // PlayStation Blue with transparency
-  } else if (console->state == 2) {  // Standby - Yellow glow
-    draw_rounded_rectangle(x - 2, y - 2, CONSOLE_CARD_WIDTH + 4, CONSOLE_CARD_HEIGHT + 4, 10,
-      RGBA8(255, 193, 7, 120));  // Yellow with transparency
-  }
+  // Card background (greyed out for unpaired consoles)
+  uint32_t card_bg = is_unpaired ? RGBA8(0x25, 0x25, 0x28, 255) : UI_COLOR_CARD_BG;
+  draw_card_with_shadow(x, y, CONSOLE_CARD_WIDTH, CONSOLE_CARD_HEIGHT, 12, card_bg);
 
   // PS5 logo (centered, 1/3 from top)
   bool is_ps5 = console->host && chiaki_target_is_ps5(console->host->target);
@@ -627,10 +638,14 @@ void render_console_card(ConsoleCardInfo* console, int x, int y, bool selected) 
     vita2d_draw_texture(status_tex, x + CONSOLE_CARD_WIDTH - 35, y + 10);
   }
 
-  // State text ("Ready" / "Standby")
+  // State text ("Ready" / "Standby" / "Unpaired")
   const char* state_text = NULL;
   uint32_t state_color = UI_COLOR_TEXT_SECONDARY;
-  if (console->state == 1) {
+
+  if (is_unpaired) {
+    state_text = "Unpaired";
+    state_color = RGBA8(180, 180, 180, 255);  // Light grey
+  } else if (console->state == 1) {
     state_text = "Ready";
     state_color = RGBA8(52, 144, 255, 255);  // PlayStation Blue
   } else if (console->state == 2) {
@@ -665,32 +680,52 @@ void render_console_grid() {
     }
   }
 
-  // Render console cards
-  for (int i = 0; i < num_hosts; i++) {
+  // If no consoles found, show discovery card
+  if (num_hosts == 0) {
     int card_x = content_area_x - (CONSOLE_CARD_WIDTH / 2);
-    int card_y = CONSOLE_CARD_START_Y + (i * CONSOLE_CARD_SPACING);
+    int card_y = CONSOLE_CARD_START_Y;
 
-    // Only show selection highlight if console cards have focus
-    bool selected = (i == selected_console_index && current_focus == FOCUS_CONSOLE_CARDS);
-    render_console_card(&cards[i], card_x, card_y, selected);
-  }
-
-  // "Add New" button at bottom
-  if (button_add_new) {
-    int btn_w = vita2d_texture_get_width(button_add_new);
-    int btn_h = vita2d_texture_get_height(button_add_new);
-    int btn_x = content_area_x - (btn_w / 2);
-    int btn_y = CONSOLE_CARD_START_Y + (num_hosts * CONSOLE_CARD_SPACING) + 20;
-
-    // Draw selection highlight if Add New button is selected
-    if (add_new_button_selected) {
-      int highlight_padding = 4;
-      vita2d_draw_rectangle(btn_x - highlight_padding, btn_y - highlight_padding,
-                            btn_w + (highlight_padding * 2), btn_h + (highlight_padding * 2),
+    // Discovery card with selection border
+    if (current_focus == FOCUS_CONSOLE_CARDS || current_focus == FOCUS_ADD_NEW) {
+      draw_rounded_rectangle(card_x - 4, card_y - 4, CONSOLE_CARD_WIDTH + 8, CONSOLE_CARD_HEIGHT + 8, 12,
                             UI_COLOR_PRIMARY_BLUE);
     }
 
-    vita2d_draw_texture(button_add_new, btn_x, btn_y);
+    draw_card_with_shadow(card_x, card_y, CONSOLE_CARD_WIDTH, CONSOLE_CARD_HEIGHT, 12, UI_COLOR_CARD_BG);
+
+    // Icon (magnifying glass/discovery icon - using PS5 icon as placeholder)
+    if (img_ps5) {
+      int icon_w = vita2d_texture_get_width(img_ps5);
+      int icon_h = vita2d_texture_get_height(img_ps5);
+      int icon_x = card_x + (CONSOLE_CARD_WIDTH / 2) - (icon_w / 2);
+      int icon_y = card_y + 40;
+      // Draw with reduced opacity
+      vita2d_draw_texture_tint(img_ps5, icon_x, icon_y, RGBA8(255, 255, 255, 100));
+    }
+
+    // Message text
+    const char* msg1 = "No consoles found";
+    const char* msg2 = "Press Triangle to Discover";
+    int msg1_w = vita2d_font_text_width(font, FONT_SIZE_SUBHEADER, msg1);
+    int msg2_w = vita2d_font_text_width(font, FONT_SIZE_SMALL, msg2);
+
+    vita2d_font_draw_text(font, card_x + (CONSOLE_CARD_WIDTH - msg1_w) / 2,
+                          card_y + CONSOLE_CARD_HEIGHT - 80,
+                          UI_COLOR_TEXT_PRIMARY, FONT_SIZE_SUBHEADER, msg1);
+
+    vita2d_font_draw_text(font, card_x + (CONSOLE_CARD_WIDTH - msg2_w) / 2,
+                          card_y + CONSOLE_CARD_HEIGHT - 50,
+                          UI_COLOR_TEXT_SECONDARY, FONT_SIZE_SMALL, msg2);
+  } else {
+    // Render console cards
+    for (int i = 0; i < num_hosts; i++) {
+      int card_x = content_area_x - (CONSOLE_CARD_WIDTH / 2);
+      int card_y = CONSOLE_CARD_START_Y + (i * CONSOLE_CARD_SPACING);
+
+      // Only show selection highlight if console cards have focus
+      bool selected = (i == selected_console_index && current_focus == FOCUS_CONSOLE_CARDS);
+      render_console_card(&cards[i], card_x, card_y, selected);
+    }
   }
 }
 
@@ -1450,13 +1485,6 @@ UIScreenType draw_main_menu() {
     }
   }
 
-  // Empty state message
-  if (num_hosts == 0) {
-    int msg_x = WAVE_NAV_WIDTH + ((VITA_WIDTH - WAVE_NAV_WIDTH) / 2) - 200;
-    vita2d_font_draw_text(font, msg_x, VITA_HEIGHT / 2, UI_COLOR_TEXT_SECONDARY, 20,
-      "No consoles found. Press Triangle to discover.");
-  }
-
   // Triangle: Trigger discovery
   if (btn_pressed(SCE_CTRL_TRIANGLE)) {
     if (!context.discovery_enabled) {
@@ -1683,8 +1711,7 @@ bool draw_settings() {
 typedef enum {
   PROFILE_SECTION_INFO = 0,
   PROFILE_SECTION_CONNECTION = 1,
-  PROFILE_SECTION_REGISTRATION = 2,
-  PROFILE_SECTION_COUNT = 3
+  PROFILE_SECTION_COUNT = 2
 } ProfileSection;
 
 typedef struct {
@@ -1910,54 +1937,36 @@ UIScreenType draw_profile_screen() {
   int content_w = VITA_WIDTH - WAVE_NAV_WIDTH - 80;
 
   // Title
-  vita2d_font_draw_text(font, content_x, 50, UI_COLOR_TEXT_PRIMARY, 26, "Profile & Authentication");
+  vita2d_font_draw_text(font, content_x, 50, UI_COLOR_TEXT_PRIMARY, 26, "Profile & Connection");
 
-  // Layout: Profile card (left), Connection info (right), Registration (bottom)
+  // Layout: Profile card (left), Connection info (right) - registration removed
   int card_spacing = 15;
-  int small_card_w = (content_w - card_spacing) / 2;
-  int small_card_h = 180;
-  int large_card_w = content_w;
-  int large_card_h = 120;
+  int card_w = (content_w - card_spacing) / 2;
+  int card_h = 250;  // Taller cards since no bottom section
 
-  // Profile card (top left)
-  draw_profile_card(content_x, content_y, small_card_w, small_card_h,
+  // Profile card (left)
+  draw_profile_card(content_x, content_y, card_w, card_h,
                     profile_state.current_section == PROFILE_SECTION_INFO);
 
-  // Connection info card (top right)
-  draw_connection_info_card(content_x + small_card_w + card_spacing, content_y, small_card_w, small_card_h,
+  // Connection info card (right)
+  draw_connection_info_card(content_x + card_w + card_spacing, content_y, card_w, card_h,
                              profile_state.current_section == PROFILE_SECTION_CONNECTION);
-
-  // Registration section (bottom, full width)
-  int reg_y = content_y + small_card_h + card_spacing;
-  draw_registration_section(content_x, reg_y, large_card_w, large_card_h,
-                             profile_state.current_section == PROFILE_SECTION_REGISTRATION);
 
   // Control hints at bottom
   int hint_y = VITA_HEIGHT - 25;
   int hint_x = WAVE_NAV_WIDTH + 20;
   vita2d_font_draw_text(font, hint_x, hint_y, UI_COLOR_TEXT_TERTIARY, 16,
-    "Up/Down: Navigate | X: Select/Edit | Circle: Back");
+    "Left/Right: Switch Card | Circle: Back");
 
   UIScreenType next_screen = UI_SCREEN_TYPE_PROFILE;
 
   // === INPUT HANDLING ===
 
-  // Up/Down: Navigate sections
-  if (btn_pressed(SCE_CTRL_UP)) {
-    profile_state.current_section = (profile_state.current_section - 1 + PROFILE_SECTION_COUNT) % PROFILE_SECTION_COUNT;
-  } else if (btn_pressed(SCE_CTRL_DOWN)) {
-    profile_state.current_section = (profile_state.current_section + 1) % PROFILE_SECTION_COUNT;
-  }
-
-  // X: Activate selected section
-  if (btn_pressed(SCE_CTRL_CROSS)) {
-    if (profile_state.current_section == PROFILE_SECTION_INFO) {
-      // TODO(PHASE3): PSN ID editing - Would need text input widget
-      // For now, users can edit in config file or we could add later
-    } else if (profile_state.current_section == PROFILE_SECTION_REGISTRATION) {
-      // Go to registration screen
-      next_screen = UI_SCREEN_TYPE_REGISTER_HOST;
-    }
+  // Left/Right: Navigate between Profile and Connection cards
+  if (btn_pressed(SCE_CTRL_LEFT)) {
+    profile_state.current_section = PROFILE_SECTION_INFO;
+  } else if (btn_pressed(SCE_CTRL_RIGHT)) {
+    profile_state.current_section = PROFILE_SECTION_CONNECTION;
   }
 
   // Circle: Back to main menu
