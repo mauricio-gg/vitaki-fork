@@ -54,7 +54,7 @@
 #define FONT_SIZE_SMALL 16       // Secondary text, hints (MINIMUM - 16pt)
 
 // VitaRPS5 UI Layout Constants
-#define WAVE_NAV_WIDTH 130
+#define WAVE_NAV_WIDTH 104  // 20% thinner than original 130px
 #define CONTENT_AREA_X WAVE_NAV_WIDTH
 #define CONTENT_AREA_WIDTH (VITA_WIDTH - WAVE_NAV_WIDTH)
 #define PARTICLE_COUNT 12
@@ -109,9 +109,8 @@ static Particle particles[PARTICLE_COUNT];
 static bool particles_initialized = false;
 
 // Wave navigation state
-#define WAVE_NAV_WIDTH 130
 #define WAVE_NAV_ICON_SIZE 48
-#define WAVE_NAV_ICON_X 41
+#define WAVE_NAV_ICON_X 33  // Adjusted for thinner bar (centered at 104/2 = 52, minus icon_size/2)
 #define WAVE_NAV_ICON_START_Y 180
 #define WAVE_NAV_ICON_SPACING 80  // Increased from 60 for better separation
 
@@ -715,22 +714,21 @@ void update_console_card_cache(bool force_update) {
 
 /// Render console cards in grid layout
 void render_console_grid() {
-  // Calculate content area (screen minus nav bar)
-  int content_area_width = VITA_WIDTH - WAVE_NAV_WIDTH;
-  int content_area_center_x = WAVE_NAV_WIDTH + (content_area_width / 2);
+  // Center based on FULL screen width (not just content area)
+  int screen_center_x = VITA_WIDTH / 2;
   int screen_center_y = VITA_HEIGHT / 2;
 
   // Update cache (respects 10-second interval)
   update_console_card_cache(false);
 
-  // Calculate card vertical center position
+  // Calculate card position - centered on full screen
   int card_y = screen_center_y - (CONSOLE_CARD_HEIGHT / 2);
-  int card_x = content_area_center_x - (CONSOLE_CARD_WIDTH / 2);
+  int card_x = screen_center_x - (CONSOLE_CARD_WIDTH / 2);
 
-  // Header text - centered horizontally above the card
+  // Header text - centered horizontally on full screen above the card
   const char* header_text = "Which do you want to connect?";
   int text_width = vita2d_font_text_width(font, 24, header_text);
-  int text_x = content_area_center_x - (text_width / 2);
+  int text_x = screen_center_x - (text_width / 2);
   int text_y = card_y - 50;  // Position text 50px above card
 
   vita2d_font_draw_text(font, text_x, text_y, UI_COLOR_TEXT_PRIMARY, 24, header_text);
