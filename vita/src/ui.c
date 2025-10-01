@@ -181,6 +181,8 @@ typedef enum ui_screen_type_t {
   UI_SCREEN_TYPE_STREAM,
   UI_SCREEN_TYPE_SETTINGS,
   UI_SCREEN_TYPE_MESSAGES,
+  UI_SCREEN_TYPE_PROFILE,        // Phase 2: Profile & Registration screen
+  UI_SCREEN_TYPE_CONTROLLER,     // Phase 2: Controller Configuration screen
 } UIScreenType;
 
 // Initialize Yes and No button from settings (will be updated in init_ui)
@@ -1390,10 +1392,10 @@ UIScreenType draw_main_menu() {
     if (current_focus == FOCUS_NAV_BAR) {
       // Activate nav bar icon - switch screen
       switch (selected_nav_icon) {
-        case 0: next_screen = UI_SCREEN_TYPE_MAIN; break;       // Play
+        case 0: next_screen = UI_SCREEN_TYPE_MAIN; break;       // Play (console list)
         case 1: next_screen = UI_SCREEN_TYPE_SETTINGS; break;   // Settings
-        case 2: next_screen = UI_SCREEN_TYPE_REGISTER_HOST; break;  // Controller
-        case 3: next_screen = UI_SCREEN_TYPE_REGISTER_HOST; break;  // Profile
+        case 2: next_screen = UI_SCREEN_TYPE_CONTROLLER; break; // Controller Configuration
+        case 3: next_screen = UI_SCREEN_TYPE_PROFILE; break;    // Profile & Registration
       }
     } else if (current_focus == FOCUS_CONSOLE_CARDS && num_hosts > 0) {
       // Connect to selected console
@@ -2707,6 +2709,16 @@ void draw_ui() {
             context.ui_state.next_active_item = (UI_MAIN_WIDGET_TEXT_INPUT | 1);
           }
           if (!draw_settings()) {
+            screen = UI_SCREEN_TYPE_MAIN;
+          }
+        } else if (screen == UI_SCREEN_TYPE_PROFILE) {
+          // Phase 2: Profile & Registration screen
+          if (!draw_profile_screen()) {
+            screen = UI_SCREEN_TYPE_MAIN;
+          }
+        } else if (screen == UI_SCREEN_TYPE_CONTROLLER) {
+          // Phase 2: Controller Configuration screen
+          if (!draw_controller_config_screen()) {
             screen = UI_SCREEN_TYPE_MAIN;
           }
         }
