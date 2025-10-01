@@ -119,6 +119,11 @@ static void event_cb(ChiakiEvent *event, void *user) {
 }
 
 static bool video_cb(uint8_t *buf, size_t buf_size, void *user) {
+  static bool first_frame = true;
+  if (first_frame) {
+    LOGD("VIDEO CALLBACK: First frame received (size=%zu)", buf_size);
+    first_frame = false;
+  }
   context.stream.is_streaming = true;
   int err = vita_h264_decode_frame(buf, buf_size);
   if (err != 0) {
@@ -198,6 +203,7 @@ static void *input_thread_func(void* user) {
   bool vitaki_left_square_mapped = (vcmi.in_out_btn[VITAKI_CTRL_IN_LEFT_SQUARE] != 0) || (vcmi.in_l2 == VITAKI_CTRL_IN_LEFT_SQUARE);
   bool vitaki_right_circle_mapped = (vcmi.in_out_btn[VITAKI_CTRL_IN_RIGHT_CIRCLE] != 0) || (vcmi.in_r2 == VITAKI_CTRL_IN_RIGHT_CIRCLE);
 
+  static int wait_count = 0;
   while (true) {
 
     // TODO enable using triggers as L2, R2
@@ -205,6 +211,10 @@ static void *input_thread_func(void* user) {
 
 
     if (stream->is_streaming) {
+      if (wait_count > 0) {
+        LOGD("INPUT THREAD: is_streaming became true after %d loops", wait_count);
+        wait_count = 0;
+      }
       int start_time_us = sceKernelGetProcessTimeWide();
 
       // get button state
@@ -367,6 +377,13 @@ static void *input_thread_func(void* user) {
         usleep(ms_per_loop*1000 - diff_time_us);
       }
 
+    } else {
+      // Not streaming yet - count wait loops
+      wait_count++;
+      if (wait_count == 1000) {
+        LOGD("INPUT THREAD: Waiting for is_streaming (1000 loops)");
+      }
+      usleep(1000);  // Sleep 1ms to avoid tight spin
     }
   }
 
