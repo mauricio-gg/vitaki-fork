@@ -94,20 +94,6 @@ if(CHIAKI_IS_VITA)
         FILE res/livearea/contents/startup.png sce_sys/livearea/contents/startup.png
         FILE res/livearea/contents/template.xml sce_sys/livearea/contents/template.xml
         # Textures, other assets
-        FILE res/assets/btn_add_active.png assets/btn_add_active.png
-        FILE res/assets/btn_add.png assets/btn_add.png
-        FILE res/assets/btn_discovery_active.png assets/btn_discovery_active.png
-        FILE res/assets/btn_discovery_off_active.png assets/btn_discovery_off_active.png
-        FILE res/assets/btn_discovery_off.png assets/btn_discovery_off.png
-        FILE res/assets/btn_discovery.png assets/btn_discovery.png
-        FILE res/assets/btn_register_active.png assets/btn_register_active.png
-        FILE res/assets/btn_register.png assets/btn_register.png
-        FILE res/assets/btn_settings_active.png assets/btn_settings_active.png
-        FILE res/assets/btn_settings.png assets/btn_settings.png
-        FILE res/assets/btn_messages_active.png assets/btn_messages_active.png
-        FILE res/assets/btn_messages.png assets/btn_messages.png
-        FILE res/assets/discovered_host.png assets/discovered_host.png
-        FILE res/assets/header_logo.png assets/header_logo.png
         FILE res/assets/ps4_off.png assets/ps4_off.png
         FILE res/assets/ps4.png assets/ps4.png
         FILE res/assets/ps4_rest.png assets/ps4_rest.png
@@ -116,28 +102,26 @@ if(CHIAKI_IS_VITA)
         FILE res/assets/ps5_rest.png assets/ps5_rest.png
         FILE res/assets/fonts/Roboto-Regular.ttf assets/fonts/Roboto-Regular.ttf
         FILE res/assets/fonts/RobotoMono-Regular.ttf assets/fonts/RobotoMono-Regular.ttf
-        # VitaRPS5 UI Assets
-        FILE res/assets/vitarps5/user_provided/modern_assets/symbol_triangle.png assets/vitarps5/symbol_triangle.png
-        FILE res/assets/vitarps5/user_provided/modern_assets/symbol_circle.png assets/vitarps5/symbol_circle.png
-        FILE res/assets/vitarps5/user_provided/modern_assets/symbol_ex.png assets/vitarps5/symbol_ex.png
-        FILE res/assets/vitarps5/user_provided/modern_assets/symbol_square.png assets/vitarps5/symbol_square.png
-        FILE res/assets/vitarps5/user_provided/modern_assets/wave_top.png assets/vitarps5/wave_top.png
-        FILE res/assets/vitarps5/user_provided/modern_assets/wave_bottom.png assets/vitarps5/wave_bottom.png
-        FILE res/assets/vitarps5/user_provided/modern_assets/ellipse_green.png assets/vitarps5/ellipse_green.png
-        FILE res/assets/vitarps5/user_provided/modern_assets/ellipse_yellow.png assets/vitarps5/ellipse_yellow.png
-        FILE res/assets/vitarps5/user_provided/modern_assets/ellipse_red.png assets/vitarps5/ellipse_red.png
-        FILE res/assets/vitarps5/user_provided/modern_assets/button_add_new.png assets/vitarps5/button_add_new.png
-        FILE res/assets/vitarps5/user_provided/modern_assets/console_card.png assets/vitarps5/console_card.png
+        # VitaRPS5 UI Assets - all consolidated in assets/ directory
+        FILE assets/symbol_triangle.png assets/symbol_triangle.png
+        FILE assets/symbol_circle.png assets/symbol_circle.png
+        FILE assets/symbol_ex.png assets/symbol_ex.png
+        FILE assets/symbol_square.png assets/symbol_square.png
+        FILE assets/wave_top.png assets/wave_top.png
+        FILE assets/wave_bottom.png assets/wave_bottom.png
+        FILE assets/ellipse_green.png assets/ellipse_green.png
+        FILE assets/ellipse_yellow.png assets/ellipse_yellow.png
+        FILE assets/ellipse_red.png assets/ellipse_red.png
+        FILE assets/button_add_new.png assets/button_add_new.png
         # Navigation Icons
-        FILE res/assets/vitarps5/user_provided/icons/settings_white.png assets/vitarps5/icon_settings.png
-        FILE res/assets/vitarps5/user_provided/icons/PS5_Controller_White.png assets/vitarps5/icon_controller.png
-        FILE res/assets/vitarps5/user_provided/icons/profile.png assets/vitarps5/icon_profile.png
-        FILE res/assets/ps5.png assets/vitarps5/icon_play.png
+        FILE assets/icon_settings.png assets/icon_settings.png
+        FILE assets/icon_controller.png assets/icon_controller.png
+        FILE assets/icon_profile.png assets/icon_profile.png
+        FILE assets/icon_play.png assets/icon_play.png
         # Professional UI assets (gradient background, logo, controller diagrams)
         FILE assets/background.png assets/background.png
         FILE assets/Vita_RPS5_Logo.png assets/Vita_RPS5_Logo.png
         FILE assets/Vita_Front.png assets/Vita_Front.png
-        FILE assets/Vita_Back.png assets/Vita_Back.png
         FILE assets/PS5_logo.png assets/PS5_logo.png
     )
 endif()

@@ -81,19 +81,6 @@ typedef struct {
 } Particle;
 
 #define TEXTURE_PATH "app0:/assets/"
-#define BTN_REGISTER_PATH TEXTURE_PATH "btn_register.png"
-#define BTN_REGISTER_ACTIVE_PATH TEXTURE_PATH "btn_register_active.png"
-#define BTN_ADD_PATH TEXTURE_PATH "btn_add.png"
-#define BTN_ADD_ACTIVE_PATH TEXTURE_PATH "btn_add_active.png"
-#define BTN_DISCOVERY_PATH TEXTURE_PATH "btn_discovery.png"
-#define BTN_DISCOVERY_ACTIVE_PATH TEXTURE_PATH "btn_discovery_active.png"
-#define BTN_DISCOVERY_OFF_PATH TEXTURE_PATH "btn_discovery_off.png"
-#define BTN_DISCOVERY_OFF_ACTIVE_PATH \
-  TEXTURE_PATH "btn_discovery_off_active.png"
-#define BTN_SETTINGS_PATH TEXTURE_PATH "btn_settings.png"
-#define BTN_SETTINGS_ACTIVE_PATH TEXTURE_PATH "btn_settings_active.png"
-#define BTN_MESSAGES_PATH TEXTURE_PATH "btn_messages.png"
-#define BTN_MESSAGES_ACTIVE_PATH TEXTURE_PATH "btn_messages_active.png"
 #define IMG_PS4_PATH TEXTURE_PATH "ps4.png"
 #define IMG_PS4_OFF_PATH TEXTURE_PATH "ps4_off.png"
 #define IMG_PS4_REST_PATH TEXTURE_PATH "ps4_rest.png"
@@ -101,26 +88,20 @@ typedef struct {
 #define IMG_PS5_OFF_PATH TEXTURE_PATH "ps5_off.png"
 #define IMG_PS5_REST_PATH TEXTURE_PATH "ps5_rest.png"
 #define IMG_DISCOVERY_HOST TEXTURE_PATH "discovered_host.png"
-#define IMG_HEADER_LOGO_PATH TEXTURE_PATH "header_logo.png"
 
 vita2d_font* font;
 vita2d_font* font_mono;
-vita2d_texture *btn_register, *btn_register_active, *btn_add, *btn_add_active,
-    *btn_discovery, *btn_discovery_active, *btn_discovery_off,
-    *btn_discovery_off_active, *btn_settings, *btn_settings_active,
-    *btn_messages, *btn_messages_active, *img_ps4,
-    *img_ps4_off, *img_ps4_rest, *img_ps5, *img_ps5_off, *img_ps5_rest,
-    *img_header, *img_discovery_host;
+vita2d_texture *img_ps4, *img_ps4_off, *img_ps4_rest,
+    *img_ps5, *img_ps5_off, *img_ps5_rest, *img_discovery_host;
 
 // VitaRPS5 UI textures
 vita2d_texture *symbol_triangle, *symbol_circle, *symbol_ex, *symbol_square;
 vita2d_texture *wave_top, *wave_bottom;
 vita2d_texture *ellipse_green, *ellipse_yellow, *ellipse_red;
-vita2d_texture *button_add_new, *console_card_bg;
+vita2d_texture *button_add_new;
 vita2d_texture *icon_play, *icon_settings, *icon_controller, *icon_profile;
 vita2d_texture *background_gradient, *vita_rps5_logo;
-vita2d_texture *vita_front, *vita_back;
-vita2d_texture *ps5_logo;
+vita2d_texture *vita_front, *ps5_logo;
 
 // Particle system state
 static Particle particles[PARTICLE_COUNT];
@@ -747,20 +728,6 @@ void draw_play_icon(int center_x, int center_y, int size) {
 
 /// Load all textures required for rendering the UI
 void load_textures() {
-  btn_add = vita2d_load_PNG_file(BTN_ADD_PATH);
-  btn_add_active = vita2d_load_PNG_file(BTN_ADD_ACTIVE_PATH);
-  btn_discovery = vita2d_load_PNG_file(BTN_DISCOVERY_PATH);
-  btn_discovery_active = vita2d_load_PNG_file(BTN_DISCOVERY_ACTIVE_PATH);
-  btn_discovery_off = vita2d_load_PNG_file(BTN_DISCOVERY_OFF_PATH);
-  btn_discovery_off_active =
-      vita2d_load_PNG_file(BTN_DISCOVERY_OFF_ACTIVE_PATH);
-  btn_register = vita2d_load_PNG_file(BTN_REGISTER_PATH);
-  btn_register_active = vita2d_load_PNG_file(BTN_REGISTER_ACTIVE_PATH);
-  btn_settings = vita2d_load_PNG_file(BTN_SETTINGS_PATH);
-  btn_settings_active = vita2d_load_PNG_file(BTN_SETTINGS_ACTIVE_PATH);
-  btn_messages = vita2d_load_PNG_file(BTN_MESSAGES_PATH);
-  btn_messages_active = vita2d_load_PNG_file(BTN_MESSAGES_ACTIVE_PATH);
-  img_header = vita2d_load_PNG_file(IMG_HEADER_LOGO_PATH);
   img_ps4 = vita2d_load_PNG_file(IMG_PS4_PATH);
   img_ps4_off = vita2d_load_PNG_file(IMG_PS4_OFF_PATH);
   img_ps4_rest = vita2d_load_PNG_file(IMG_PS4_REST_PATH);
@@ -770,29 +737,27 @@ void load_textures() {
   img_discovery_host = vita2d_load_PNG_file(IMG_DISCOVERY_HOST);
 
   // Load VitaRPS5 UI assets
-  symbol_triangle = vita2d_load_PNG_file("app0:/assets/vitarps5/symbol_triangle.png");
-  symbol_circle = vita2d_load_PNG_file("app0:/assets/vitarps5/symbol_circle.png");
-  symbol_ex = vita2d_load_PNG_file("app0:/assets/vitarps5/symbol_ex.png");
-  symbol_square = vita2d_load_PNG_file("app0:/assets/vitarps5/symbol_square.png");
-  wave_top = vita2d_load_PNG_file("app0:/assets/vitarps5/wave_top.png");
-  wave_bottom = vita2d_load_PNG_file("app0:/assets/vitarps5/wave_bottom.png");
-  ellipse_green = vita2d_load_PNG_file("app0:/assets/vitarps5/ellipse_green.png");
-  ellipse_yellow = vita2d_load_PNG_file("app0:/assets/vitarps5/ellipse_yellow.png");
-  ellipse_red = vita2d_load_PNG_file("app0:/assets/vitarps5/ellipse_red.png");
-  button_add_new = vita2d_load_PNG_file("app0:/assets/vitarps5/button_add_new.png");
-  console_card_bg = vita2d_load_PNG_file("app0:/assets/vitarps5/console_card.png");
+  symbol_triangle = vita2d_load_PNG_file("app0:/assets/symbol_triangle.png");
+  symbol_circle = vita2d_load_PNG_file("app0:/assets/symbol_circle.png");
+  symbol_ex = vita2d_load_PNG_file("app0:/assets/symbol_ex.png");
+  symbol_square = vita2d_load_PNG_file("app0:/assets/symbol_square.png");
+  wave_top = vita2d_load_PNG_file("app0:/assets/wave_top.png");
+  wave_bottom = vita2d_load_PNG_file("app0:/assets/wave_bottom.png");
+  ellipse_green = vita2d_load_PNG_file("app0:/assets/ellipse_green.png");
+  ellipse_yellow = vita2d_load_PNG_file("app0:/assets/ellipse_yellow.png");
+  ellipse_red = vita2d_load_PNG_file("app0:/assets/ellipse_red.png");
+  button_add_new = vita2d_load_PNG_file("app0:/assets/button_add_new.png");
 
   // Load navigation icons
-  icon_play = vita2d_load_PNG_file("app0:/assets/vitarps5/icon_play.png");
-  icon_settings = vita2d_load_PNG_file("app0:/assets/vitarps5/icon_settings.png");
-  icon_controller = vita2d_load_PNG_file("app0:/assets/vitarps5/icon_controller.png");
-  icon_profile = vita2d_load_PNG_file("app0:/assets/vitarps5/icon_profile.png");
+  icon_play = vita2d_load_PNG_file("app0:/assets/icon_play.png");
+  icon_settings = vita2d_load_PNG_file("app0:/assets/icon_settings.png");
+  icon_controller = vita2d_load_PNG_file("app0:/assets/icon_controller.png");
+  icon_profile = vita2d_load_PNG_file("app0:/assets/icon_profile.png");
 
   // Load new professional assets
   background_gradient = vita2d_load_PNG_file("app0:/assets/background.png");
   vita_rps5_logo = vita2d_load_PNG_file("app0:/assets/Vita_RPS5_Logo.png");
   vita_front = vita2d_load_PNG_file("app0:/assets/Vita_Front.png");
-  vita_back = vita2d_load_PNG_file("app0:/assets/Vita_Back.png");
   ps5_logo = vita2d_load_PNG_file("app0:/assets/PS5_logo.png");
 }
 
