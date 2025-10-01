@@ -1696,43 +1696,60 @@ static ProfileState profile_state = {0};
 
 /// Draw profile card (left side)
 static void draw_profile_card(int x, int y, int width, int height, bool selected) {
-  uint32_t card_color = selected ? RGBA8(0x40, 0x40, 0x50, 255) : RGBA8(0x30, 0x30, 0x38, 255);
-  draw_rounded_rectangle(x, y, width, height, 12, card_color);
+  uint32_t card_color = UI_COLOR_CARD_BG;
+  draw_card_with_shadow(x, y, width, height, 12, card_color);
 
   if (selected) {
     draw_rounded_rectangle(x - 2, y - 2, width + 4, height + 4, 14, UI_COLOR_PRIMARY_BLUE);
     draw_rounded_rectangle(x, y, width, height, 12, card_color);
   }
 
-  // Avatar placeholder (circular)
-  int avatar_x = x + width / 2;
-  int avatar_y = y + 50;
-  int avatar_radius = 35;
-  draw_circle(avatar_x, avatar_y, avatar_radius, UI_COLOR_PRIMARY_BLUE);
+  int content_x = x + 20;
+  int content_y = y + 30;
 
-  // User icon (simple "person" representation)
-  vita2d_font_draw_text(font, avatar_x - 10, avatar_y + 8, UI_COLOR_TEXT_PRIMARY, 32, "\xF0\x9F\x91\xA4");
+  // User icon (blue circular background with profile.png icon as placeholder)
+  int icon_size = 50;
+  int icon_x = content_x;
+  int icon_y = content_y;
+  draw_circle(icon_x + icon_size/2, icon_y + icon_size/2, icon_size/2, UI_COLOR_PRIMARY_BLUE);
+
+  // Profile icon (placeholder until PSN login retrieves actual user avatar)
+  if (icon_profile) {
+    int img_w = vita2d_texture_get_width(icon_profile);
+    int img_h = vita2d_texture_get_height(icon_profile);
+    float scale = (icon_size * 0.6f) / img_w;  // 60% of circle size
+    int scaled_w = (int)(img_w * scale);
+    int scaled_h = (int)(img_h * scale);
+    int img_x = icon_x + (icon_size - scaled_w) / 2;
+    int img_y = icon_y + (icon_size - scaled_h) / 2;
+    vita2d_draw_texture_scale(icon_profile, img_x, img_y, scale, scale);
+  }
 
   // PSN Account ID
   const char* psn_id = context.config.psn_account_id ? context.config.psn_account_id : "Not Set";
-  int psn_width = vita2d_font_text_width(font, 18, psn_id);
-  vita2d_font_draw_text(font, x + (width - psn_width) / 2, y + 110,
-                        UI_COLOR_TEXT_PRIMARY, 18, psn_id);
+  vita2d_font_draw_text(font, content_x + icon_size + 20, content_y + 20,
+                        UI_COLOR_TEXT_PRIMARY, FONT_SIZE_SUBHEADER, psn_id);
 
-  // Label
-  vita2d_font_draw_text(font, x + 10, y + 140, UI_COLOR_TEXT_SECONDARY, 14, "PSN Account ID");
+  // PlayStation Network label
+  vita2d_font_draw_text(font, content_x + icon_size + 20, content_y + 42,
+                        UI_COLOR_TEXT_SECONDARY, FONT_SIZE_SMALL, "PlayStation Network");
 
-  // Edit hint if selected
-  if (selected) {
-    vita2d_font_draw_text(font, x + 10, y + height - 20,
-                          UI_COLOR_TEXT_TERTIARY, 12, "Press X to edit");
-  }
+  // Divider line
+  vita2d_draw_rectangle(content_x, content_y + 70, width - 40, 1,
+                        RGBA8(0x50, 0x50, 0x50, 255));
+
+  // "Account ID: xxxx" label at bottom
+  vita2d_font_draw_text(font, content_x, y + height - 30,
+                        UI_COLOR_TEXT_TERTIARY, FONT_SIZE_SMALL, "Account ID");
+  vita2d_font_draw_text(font, content_x, y + height - 12,
+                        UI_COLOR_TEXT_SECONDARY, FONT_SIZE_SMALL,
+                        psn_id);
 }
 
-/// Draw connection info card (right side)
+/// Draw connection info card (right side) - two-column layout
 static void draw_connection_info_card(int x, int y, int width, int height, bool selected) {
-  uint32_t card_color = selected ? RGBA8(0x40, 0x40, 0x50, 255) : RGBA8(0x30, 0x30, 0x38, 255);
-  draw_rounded_rectangle(x, y, width, height, 12, card_color);
+  uint32_t card_color = UI_COLOR_CARD_BG;
+  draw_card_with_shadow(x, y, width, height, 12, card_color);
 
   if (selected) {
     draw_rounded_rectangle(x - 2, y - 2, width + 4, height + 4, 14, UI_COLOR_PRIMARY_BLUE);
@@ -1740,42 +1757,44 @@ static void draw_connection_info_card(int x, int y, int width, int height, bool 
   }
 
   int content_x = x + 15;
-  int content_y = y + 30;
-  int line_h = 25;
+  int content_y = y + 25;
+  int line_h = 20;
+  int col2_x = content_x + 120;  // Value column
 
   // Title
-  vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_PRIMARY, 18, "Connection Information");
-  content_y += 35;
+  vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_PRIMARY, FONT_SIZE_SUBHEADER,
+                        "Connection Information");
+  content_y += 30;
 
   // Network Type
-  vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_SECONDARY, 14, "Network Type:");
-  vita2d_font_draw_text(font, content_x + 150, content_y, UI_COLOR_TEXT_PRIMARY, 14, "Local WiFi");
+  vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_SECONDARY, FONT_SIZE_SMALL,
+                        "Network Type");
+  vita2d_font_draw_text(font, col2_x, content_y, UI_COLOR_TEXT_PRIMARY, FONT_SIZE_SMALL,
+                        "Local WiFi");
   content_y += line_h;
 
-  // Console IP (from active host if available)
+  // Console IP
   const char* console_ip = "Not Connected";
   if (context.active_host && context.active_host->discovery_state &&
       context.active_host->discovery_state->host_addr) {
     console_ip = context.active_host->discovery_state->host_addr;
   }
-  vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_SECONDARY, 14, "Console IP:");
-  vita2d_font_draw_text(font, content_x + 150, content_y, UI_COLOR_TEXT_PRIMARY, 14, console_ip);
+  vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_SECONDARY, FONT_SIZE_SMALL,
+                        "Console IP");
+  vita2d_font_draw_text(font, col2_x, content_y, UI_COLOR_TEXT_PRIMARY, FONT_SIZE_SMALL,
+                        console_ip);
   content_y += line_h;
 
-  // Latency (real-time if enabled)
+  // Latency (if enabled)
   if (context.config.show_latency) {
-    vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_SECONDARY, FONT_SIZE_SMALL, "Latency:");
-
     char latency_text[32] = "N/A";
+    uint32_t latency_color = UI_COLOR_TEXT_PRIMARY;
+
     if (context.stream.session_init && context.stream.session.rtt_us > 0) {
       uint32_t latency_ms = (uint32_t)(context.stream.session.rtt_us / 1000);
       snprintf(latency_text, sizeof(latency_text), "%u ms", latency_ms);
-    }
 
-    // Color code: Green <30ms, Yellow 30-60ms, Red >60ms
-    uint32_t latency_color = UI_COLOR_TEXT_SECONDARY;
-    if (context.stream.session_init && context.stream.session.rtt_us > 0) {
-      uint32_t latency_ms = (uint32_t)(context.stream.session.rtt_us / 1000);
+      // Color code
       if (latency_ms < 30) {
         latency_color = RGBA8(0x4C, 0xAF, 0x50, 255);  // Green
       } else if (latency_ms < 60) {
@@ -1785,24 +1804,47 @@ static void draw_connection_info_card(int x, int y, int width, int height, bool 
       }
     }
 
-    vita2d_font_draw_text(font, content_x + 150, content_y, latency_color, FONT_SIZE_SMALL, latency_text);
+    vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_SECONDARY, FONT_SIZE_SMALL,
+                          "Latency");
+    vita2d_font_draw_text(font, col2_x, content_y, latency_color, FONT_SIZE_SMALL,
+                          latency_text);
     content_y += line_h;
   }
 
-  // Connection Status
+  // Connection status
   bool is_connected = context.active_host != NULL;
-  StatusType status = is_connected ? STATUS_ACTIVE : STATUS_ERROR;
-  const char* status_text = is_connected ? "Ready" : "No Console";
+  const char* connection_text = is_connected ? "Direct" : "None";
+  vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_SECONDARY, FONT_SIZE_SMALL,
+                        "Connection");
+  vita2d_font_draw_text(font, col2_x, content_y, UI_COLOR_TEXT_PRIMARY, FONT_SIZE_SMALL,
+                        connection_text);
+  content_y += line_h;
 
-  vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_SECONDARY, 14, "Status:");
-  draw_status_dot(content_x + 150, content_y - 3, 6, status);
-  vita2d_font_draw_text(font, content_x + 165, content_y, UI_COLOR_TEXT_PRIMARY, 14, status_text);
+  // Remote Play status
+  const char* remote_play = is_connected ? "Available" : "Unavailable";
+  vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_SECONDARY, FONT_SIZE_SMALL,
+                        "Remote Play");
+  vita2d_font_draw_text(font, col2_x, content_y, UI_COLOR_TEXT_PRIMARY, FONT_SIZE_SMALL,
+                        remote_play);
+  content_y += line_h;
+
+  // Quality Setting
+  const char* quality_text = "Auto";
+  if (context.config.resolution == CHIAKI_VIDEO_RESOLUTION_PRESET_720p) {
+    quality_text = "720p";
+  } else if (context.config.resolution == CHIAKI_VIDEO_RESOLUTION_PRESET_1080p) {
+    quality_text = "1080p";
+  }
+  vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_SECONDARY, FONT_SIZE_SMALL,
+                        "Quality Setting");
+  vita2d_font_draw_text(font, col2_x, content_y, UI_COLOR_TEXT_PRIMARY, FONT_SIZE_SMALL,
+                        quality_text);
 }
 
-/// Draw registration section (bottom)
+/// Draw PSN Authentication section (bottom) - modern design with status indicators
 static void draw_registration_section(int x, int y, int width, int height, bool selected) {
-  uint32_t card_color = selected ? RGBA8(0x40, 0x40, 0x50, 255) : RGBA8(0x30, 0x30, 0x38, 255);
-  draw_rounded_rectangle(x, y, width, height, 12, card_color);
+  uint32_t card_color = UI_COLOR_CARD_BG;
+  draw_card_with_shadow(x, y, width, height, 12, card_color);
 
   if (selected) {
     draw_rounded_rectangle(x - 2, y - 2, width + 4, height + 4, 14, UI_COLOR_PRIMARY_BLUE);
@@ -1810,28 +1852,47 @@ static void draw_registration_section(int x, int y, int width, int height, bool 
   }
 
   int content_x = x + 15;
-  int content_y = y + 30;
+  int content_y = y + 25;
 
   // Title
-  vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_PRIMARY, 18, "Console Registration");
-  content_y += 35;
-
-  // Status
-  int num_registered = context.config.num_registered_hosts;
-  char reg_status[64];
-  snprintf(reg_status, sizeof(reg_status), "%d console(s) registered", num_registered);
-
-  vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_SECONDARY, 14, "Status:");
-  vita2d_font_draw_text(font, content_x + 150, content_y, UI_COLOR_TEXT_PRIMARY, 14, reg_status);
+  vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_PRIMARY, FONT_SIZE_SUBHEADER,
+                        "PSN Authentication");
   content_y += 30;
 
-  // Action button
+  // Description text
+  vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_SECONDARY, FONT_SIZE_SMALL,
+                        "Required for remote play on PS5 over local net.");
+  content_y += 25;
+
+  // Authentication status indicators
+  int num_registered = context.config.num_registered_hosts;
+  bool authenticated = num_registered > 0;
+
+  // Status indicator 1: Not authenticated (red X) or authenticated (green checkmark)
+  draw_status_dot(content_x, content_y - 3, 6, authenticated ? STATUS_ACTIVE : STATUS_ERROR);
+  vita2d_font_draw_text(font, content_x + 15, content_y,
+                        authenticated ? RGBA8(0x4C, 0xAF, 0x50, 255) : RGBA8(0xF4, 0x43, 0x36, 255),
+                        FONT_SIZE_SMALL, authenticated ? "Authenticated" : "Not authenticated");
+  content_y += 22;
+
+  // "Add New" button
+  int btn_w = 80;
+  int btn_h = 30;
+  int btn_x = content_x;
+  int btn_y = content_y;
+
+  uint32_t btn_color = selected ? UI_COLOR_PRIMARY_BLUE : RGBA8(0x50, 0x70, 0xA0, 255);
+  draw_rounded_rectangle(btn_x, btn_y, btn_w, btn_h, 6, btn_color);
+
+  int text_w = vita2d_font_text_width(font, FONT_SIZE_SMALL, "Add New");
+  vita2d_font_draw_text(font, btn_x + (btn_w - text_w) / 2, btn_y + btn_h / 2 + 5,
+                        UI_COLOR_TEXT_PRIMARY, FONT_SIZE_SMALL, "Add New");
+
+  // Hint if selected
   if (selected) {
-    vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_PRIMARY_BLUE, 14,
-                          "Press X to register a new console");
-  } else {
-    vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_TERTIARY, 14,
-                          "Select to register a new console");
+    vita2d_font_draw_text(font, btn_x + btn_w + 15, btn_y + btn_h / 2 + 5,
+                          UI_COLOR_TEXT_TERTIARY, FONT_SIZE_SMALL,
+                          "Press X to register");
   }
 }
 
