@@ -168,13 +168,17 @@ void set_ctrl_r2pos(VitaChiakiStream *stream, VitakiCtrlIn ctrl_in) {
 }
 
 static void *input_thread_func(void* user) {
+  // Set input thread to highest priority for lowest input lag
+  sceKernelChangeThreadPriority(SCE_KERNEL_THREAD_ID_SELF, 96);
+  sceKernelChangeThreadCpuAffinityMask(SCE_KERNEL_THREAD_ID_SELF, SCE_KERNEL_CPU_MASK_USER_1);
+
   sceMotionStartSampling();
   sceCtrlSetSamplingMode(SCE_CTRL_MODE_ANALOG_WIDE);
   sceCtrlSetSamplingModeExt(SCE_CTRL_MODE_ANALOG_WIDE);
   SceCtrlData ctrl;
   SceMotionState motion;
 	VitaChiakiStream *stream = user;
-  int ms_per_loop = 5;
+  int ms_per_loop = 2;
 
   VitakiCtrlMapInfo vcmi = stream->vcmi;
 
