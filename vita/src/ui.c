@@ -1771,6 +1771,214 @@ bool draw_settings() {
   return true;
 }
 
+// ============================================================================
+// PHASE 2: PROFILE & REGISTRATION SCREEN
+// ============================================================================
+
+typedef enum {
+  PROFILE_SECTION_INFO = 0,
+  PROFILE_SECTION_CONNECTION = 1,
+  PROFILE_SECTION_REGISTRATION = 2,
+  PROFILE_SECTION_COUNT = 3
+} ProfileSection;
+
+typedef struct {
+  ProfileSection current_section;
+  bool editing_psn_id;
+} ProfileState;
+
+static ProfileState profile_state = {0};
+
+/// Draw profile card (left side)
+static void draw_profile_card(int x, int y, int width, int height, bool selected) {
+  uint32_t card_color = selected ? RGBA8(0x40, 0x40, 0x50, 255) : RGBA8(0x30, 0x30, 0x38, 255);
+  draw_rounded_rectangle(x, y, width, height, 12, card_color);
+
+  if (selected) {
+    draw_rounded_rectangle(x - 2, y - 2, width + 4, height + 4, 14, UI_COLOR_PRIMARY_BLUE);
+    draw_rounded_rectangle(x, y, width, height, 12, card_color);
+  }
+
+  // Avatar placeholder (circular)
+  int avatar_x = x + width / 2;
+  int avatar_y = y + 50;
+  int avatar_radius = 35;
+  draw_circle(avatar_x, avatar_y, avatar_radius, UI_COLOR_PRIMARY_BLUE);
+
+  // User icon (simple "person" representation)
+  vita2d_font_draw_text(font, avatar_x - 10, avatar_y + 8, UI_COLOR_TEXT_PRIMARY, 32, "\xF0\x9F\x91\xA4");
+
+  // PSN Account ID
+  const char* psn_id = context.config.psn_account_id ? context.config.psn_account_id : "Not Set";
+  int psn_width = vita2d_font_text_width(font, 18, psn_id);
+  vita2d_font_draw_text(font, x + (width - psn_width) / 2, y + 110,
+                        UI_COLOR_TEXT_PRIMARY, 18, psn_id);
+
+  // Label
+  vita2d_font_draw_text(font, x + 10, y + 140, UI_COLOR_TEXT_SECONDARY, 14, "PSN Account ID");
+
+  // Edit hint if selected
+  if (selected) {
+    vita2d_font_draw_text(font, x + 10, y + height - 20,
+                          UI_COLOR_TEXT_TERTIARY, 12, "Press X to edit");
+  }
+}
+
+/// Draw connection info card (right side)
+static void draw_connection_info_card(int x, int y, int width, int height, bool selected) {
+  uint32_t card_color = selected ? RGBA8(0x40, 0x40, 0x50, 255) : RGBA8(0x30, 0x30, 0x38, 255);
+  draw_rounded_rectangle(x, y, width, height, 12, card_color);
+
+  if (selected) {
+    draw_rounded_rectangle(x - 2, y - 2, width + 4, height + 4, 14, UI_COLOR_PRIMARY_BLUE);
+    draw_rounded_rectangle(x, y, width, height, 12, card_color);
+  }
+
+  int content_x = x + 15;
+  int content_y = y + 30;
+  int line_h = 25;
+
+  // Title
+  vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_PRIMARY, 18, "Connection Information");
+  content_y += 35;
+
+  // Network Type
+  vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_SECONDARY, 14, "Network Type:");
+  vita2d_font_draw_text(font, content_x + 150, content_y, UI_COLOR_TEXT_PRIMARY, 14, "Local WiFi");
+  content_y += line_h;
+
+  // Console IP (from active host if available)
+  const char* console_ip = "Not Connected";
+  if (context.active_host && context.active_host->discovery_state &&
+      context.active_host->discovery_state->host_addr) {
+    console_ip = context.active_host->discovery_state->host_addr;
+  }
+  vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_SECONDARY, 14, "Console IP:");
+  vita2d_font_draw_text(font, content_x + 150, content_y, UI_COLOR_TEXT_PRIMARY, 14, console_ip);
+  content_y += line_h;
+
+  // Latency (stub)
+  // TODO(PHASE2-STUB): Latency - Need stream stats integration
+  vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_SECONDARY, 14, "Latency:");
+  vita2d_font_draw_text(font, content_x + 150, content_y, UI_COLOR_TEXT_SECONDARY, 14, "N/A");
+  content_y += line_h;
+
+  // Connection Status
+  bool is_connected = context.active_host != NULL;
+  StatusType status = is_connected ? STATUS_ACTIVE : STATUS_ERROR;
+  const char* status_text = is_connected ? "Ready" : "No Console";
+
+  vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_SECONDARY, 14, "Status:");
+  draw_status_dot(content_x + 150, content_y - 3, 6, status);
+  vita2d_font_draw_text(font, content_x + 165, content_y, UI_COLOR_TEXT_PRIMARY, 14, status_text);
+}
+
+/// Draw registration section (bottom)
+static void draw_registration_section(int x, int y, int width, int height, bool selected) {
+  uint32_t card_color = selected ? RGBA8(0x40, 0x40, 0x50, 255) : RGBA8(0x30, 0x30, 0x38, 255);
+  draw_rounded_rectangle(x, y, width, height, 12, card_color);
+
+  if (selected) {
+    draw_rounded_rectangle(x - 2, y - 2, width + 4, height + 4, 14, UI_COLOR_PRIMARY_BLUE);
+    draw_rounded_rectangle(x, y, width, height, 12, card_color);
+  }
+
+  int content_x = x + 15;
+  int content_y = y + 30;
+
+  // Title
+  vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_PRIMARY, 18, "Console Registration");
+  content_y += 35;
+
+  // Status
+  int num_registered = context.config.num_registered_hosts;
+  char reg_status[64];
+  snprintf(reg_status, sizeof(reg_status), "%d console(s) registered", num_registered);
+
+  vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_SECONDARY, 14, "Status:");
+  vita2d_font_draw_text(font, content_x + 150, content_y, UI_COLOR_TEXT_PRIMARY, 14, reg_status);
+  content_y += 30;
+
+  // Action button
+  if (selected) {
+    vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_PRIMARY_BLUE, 14,
+                          "Press X to register a new console");
+  } else {
+    vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_TERTIARY, 14,
+                          "Select to register a new console");
+  }
+}
+
+/// Main Profile & Registration screen
+/// @return whether the dialog should keep rendering
+bool draw_profile_screen() {
+  // Render particle background and wave navigation
+  update_particles();
+  render_particles();
+  render_wave_navigation();
+
+  // Main content area
+  int content_x = WAVE_NAV_WIDTH + 40;
+  int content_y = 60;
+  int content_w = VITA_WIDTH - WAVE_NAV_WIDTH - 80;
+
+  // Title
+  vita2d_font_draw_text(font, content_x, 50, UI_COLOR_TEXT_PRIMARY, 26, "Profile & Authentication");
+
+  // Layout: Profile card (left), Connection info (right), Registration (bottom)
+  int card_spacing = 15;
+  int small_card_w = (content_w - card_spacing) / 2;
+  int small_card_h = 180;
+  int large_card_w = content_w;
+  int large_card_h = 120;
+
+  // Profile card (top left)
+  draw_profile_card(content_x, content_y, small_card_w, small_card_h,
+                    profile_state.current_section == PROFILE_SECTION_INFO);
+
+  // Connection info card (top right)
+  draw_connection_info_card(content_x + small_card_w + card_spacing, content_y, small_card_w, small_card_h,
+                             profile_state.current_section == PROFILE_SECTION_CONNECTION);
+
+  // Registration section (bottom, full width)
+  int reg_y = content_y + small_card_h + card_spacing;
+  draw_registration_section(content_x, reg_y, large_card_w, large_card_h,
+                             profile_state.current_section == PROFILE_SECTION_REGISTRATION);
+
+  // Control hints at bottom
+  int hint_y = VITA_HEIGHT - 25;
+  int hint_x = WAVE_NAV_WIDTH + 20;
+  vita2d_font_draw_text(font, hint_x, hint_y, UI_COLOR_TEXT_TERTIARY, 16,
+    "Up/Down: Navigate | X: Select/Edit | Circle: Back");
+
+  // === INPUT HANDLING ===
+
+  // Up/Down: Navigate sections
+  if (btn_pressed(SCE_CTRL_UP)) {
+    profile_state.current_section = (profile_state.current_section - 1 + PROFILE_SECTION_COUNT) % PROFILE_SECTION_COUNT;
+  } else if (btn_pressed(SCE_CTRL_DOWN)) {
+    profile_state.current_section = (profile_state.current_section + 1) % PROFILE_SECTION_COUNT;
+  }
+
+  // X: Activate selected section
+  if (btn_pressed(SCE_CTRL_CROSS)) {
+    if (profile_state.current_section == PROFILE_SECTION_INFO) {
+      // TODO(PHASE2-STUB): PSN ID editing - Would need text input widget
+      // For now, users can edit in config file or we could add later
+    } else if (profile_state.current_section == PROFILE_SECTION_REGISTRATION) {
+      // Go to registration screen
+      return false; // Exit profile screen, go to registration
+    }
+  }
+
+  // Circle: Back to main menu
+  if (btn_pressed(SCE_CTRL_CIRCLE)) {
+    return false;
+  }
+
+  return true;
+}
+
 long int LINK_CODE = -1;
 char* LINK_CODE_LABEL = "Registration code";
 
