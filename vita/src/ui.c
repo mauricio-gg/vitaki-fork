@@ -111,10 +111,11 @@ static bool particles_initialized = false;
 // Wave navigation state
 #define WAVE_NAV_ICON_SIZE 48
 #define WAVE_NAV_ICON_X 33  // Adjusted for thinner bar (centered at 104/2 = 52, minus icon_size/2)
-#define WAVE_NAV_ICON_SPACING 80  // Spacing between icons
-// Vertically center 4 icons: total_height = (4 * 48) + (3 * 80) = 432px
-// Start Y = (VITA_HEIGHT / 2) - (432 / 2) = 272 - 216 = 56px
-#define WAVE_NAV_ICON_START_Y 56
+#define WAVE_NAV_ICON_SPACING 80  // Spacing between icon centers
+// Vertically center 4 icons: 3 gaps of 80px = 240px total span between first and last
+// Center Y = VITA_HEIGHT / 2 = 272px
+// First icon Y = 272px - (240px / 2) = 272px - 120px = 152px
+#define WAVE_NAV_ICON_START_Y 152
 
 static int selected_nav_icon = 0;  // 0=Play, 1=Settings, 2=Controller, 3=Profile
 static float wave_animation_time = 0.0f;
