@@ -1897,8 +1897,8 @@ static void draw_registration_section(int x, int y, int width, int height, bool 
 }
 
 /// Main Profile & Registration screen
-/// @return whether the dialog should keep rendering
-bool draw_profile_screen() {
+/// @return next screen type to display
+UIScreenType draw_profile_screen() {
   // Render particle background and wave navigation
   update_particles();
   render_particles();
@@ -1938,6 +1938,8 @@ bool draw_profile_screen() {
   vita2d_font_draw_text(font, hint_x, hint_y, UI_COLOR_TEXT_TERTIARY, 16,
     "Up/Down: Navigate | X: Select/Edit | Circle: Back");
 
+  UIScreenType next_screen = UI_SCREEN_TYPE_PROFILE;
+
   // === INPUT HANDLING ===
 
   // Up/Down: Navigate sections
@@ -1950,20 +1952,20 @@ bool draw_profile_screen() {
   // X: Activate selected section
   if (btn_pressed(SCE_CTRL_CROSS)) {
     if (profile_state.current_section == PROFILE_SECTION_INFO) {
-      // TODO(PHASE2-STUB): PSN ID editing - Would need text input widget
+      // TODO(PHASE3): PSN ID editing - Would need text input widget
       // For now, users can edit in config file or we could add later
     } else if (profile_state.current_section == PROFILE_SECTION_REGISTRATION) {
       // Go to registration screen
-      return false; // Exit profile screen, go to registration
+      next_screen = UI_SCREEN_TYPE_REGISTER_HOST;
     }
   }
 
   // Circle: Back to main menu
   if (btn_pressed(SCE_CTRL_CIRCLE)) {
-    return false;
+    next_screen = UI_SCREEN_TYPE_MAIN;
   }
 
-  return true;
+  return next_screen;
 }
 
 // ============================================================================
@@ -2830,9 +2832,7 @@ void draw_ui() {
           }
         } else if (screen == UI_SCREEN_TYPE_PROFILE) {
           // Phase 2: Profile & Registration screen
-          if (!draw_profile_screen()) {
-            screen = UI_SCREEN_TYPE_MAIN;
-          }
+          screen = draw_profile_screen();
         } else if (screen == UI_SCREEN_TYPE_CONTROLLER) {
           // Phase 2: Controller Configuration screen
           if (!draw_controller_config_screen()) {
