@@ -110,7 +110,7 @@ static bool particles_initialized = false;
 
 // Wave navigation state
 #define WAVE_NAV_ICON_SIZE 48
-#define WAVE_NAV_ICON_X 33  // Adjusted for thinner bar (centered at 104/2 = 52, minus icon_size/2)
+#define WAVE_NAV_ICON_X 52  // Centered on nav bar (WAVE_NAV_WIDTH / 2 = 104 / 2 = 52)
 #define WAVE_NAV_ICON_SPACING 80  // Spacing between icon centers
 // Vertically center 4 icons: 3 gaps of 80px = 240px total span between first and last
 // Center Y = VITA_HEIGHT / 2 = 272px
