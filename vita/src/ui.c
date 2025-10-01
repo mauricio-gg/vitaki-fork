@@ -154,6 +154,18 @@ typedef struct {
 
 static int selected_console_index = 0;
 
+// PIN entry state for VitaRPS5-style registration
+typedef struct {
+  uint32_t pin_digits[8];  // Each digit 0-9, or 10 for empty
+  int current_digit;        // Which digit cursor is on (0-7)
+  bool pin_complete;        // All 8 digits entered
+  uint32_t complete_pin;    // Final 8-digit number
+} PinEntryState;
+
+static PinEntryState pin_entry_state = {0};
+static bool show_cursor = false;
+static uint32_t cursor_blink_timer = 0;
+
 // Focus system for D-pad navigation
 typedef enum {
   FOCUS_NAV_BAR = 0,      // Wave navigation sidebar
@@ -701,44 +713,8 @@ void render_console_grid() {
     }
   }
 
-  // If no consoles found, show discovery card
-  if (num_hosts == 0) {
-    int card_x = content_area_x - (CONSOLE_CARD_WIDTH / 2);
-    int card_y = CONSOLE_CARD_START_Y;
-
-    // Discovery card with selection border
-    if (current_focus == FOCUS_CONSOLE_CARDS) {
-      draw_rounded_rectangle(card_x - 4, card_y - 4, CONSOLE_CARD_WIDTH + 8, CONSOLE_CARD_HEIGHT + 8, 12,
-                            UI_COLOR_PRIMARY_BLUE);
-    }
-
-    draw_card_with_shadow(card_x, card_y, CONSOLE_CARD_WIDTH, CONSOLE_CARD_HEIGHT, 12, UI_COLOR_CARD_BG);
-
-    // Icon (magnifying glass/discovery icon - using PS5 icon as placeholder)
-    if (img_ps5) {
-      int icon_w = vita2d_texture_get_width(img_ps5);
-      int icon_h = vita2d_texture_get_height(img_ps5);
-      int icon_x = card_x + (CONSOLE_CARD_WIDTH / 2) - (icon_w / 2);
-      int icon_y = card_y + 40;
-      // Draw with reduced opacity
-      vita2d_draw_texture_tint(img_ps5, icon_x, icon_y, RGBA8(255, 255, 255, 100));
-    }
-
-    // Message text
-    const char* msg1 = "No consoles found";
-    const char* msg2 = "Press Triangle to Discover";
-    int msg1_w = vita2d_font_text_width(font, FONT_SIZE_SUBHEADER, msg1);
-    int msg2_w = vita2d_font_text_width(font, FONT_SIZE_SMALL, msg2);
-
-    vita2d_font_draw_text(font, card_x + (CONSOLE_CARD_WIDTH - msg1_w) / 2,
-                          card_y + CONSOLE_CARD_HEIGHT - 80,
-                          UI_COLOR_TEXT_PRIMARY, FONT_SIZE_SUBHEADER, msg1);
-
-    vita2d_font_draw_text(font, card_x + (CONSOLE_CARD_WIDTH - msg2_w) / 2,
-                          card_y + CONSOLE_CARD_HEIGHT - 50,
-                          UI_COLOR_TEXT_SECONDARY, FONT_SIZE_SMALL, msg2);
-  } else {
-    // Render console cards
+  // Render console cards (if any exist)
+  if (num_hosts > 0) {
     for (int i = 0; i < num_hosts; i++) {
       int card_x = content_area_x - (CONSOLE_CARD_WIDTH / 2);
       int card_y = CONSOLE_CARD_START_Y + (i * CONSOLE_CARD_SPACING);
@@ -1458,11 +1434,6 @@ UIScreenType draw_main_menu() {
           }
           host_idx++;
         }
-      }
-    } else if (current_focus == FOCUS_CONSOLE_CARDS && num_hosts == 0) {
-      // X button on discovery card - trigger discovery
-      if (!context.discovery_enabled) {
-        start_discovery(NULL, NULL);
       }
     }
   }
@@ -2341,19 +2312,87 @@ bool draw_controller_config_screen() {
   return true;
 }
 
-long int LINK_CODE = -1;
-char* LINK_CODE_LABEL = "Registration code";
+// VitaRPS5-style PIN entry constants
+#define PIN_DIGIT_COUNT 8
+#define PIN_DIGIT_WIDTH 60
+#define PIN_DIGIT_HEIGHT 70
+#define PIN_DIGIT_SPACING 10
+#define PIN_CARD_WIDTH 700
+#define PIN_CARD_HEIGHT 450
 
-/// Draw the form to register a host
+/// Helper: Reset PIN entry state
+void reset_pin_entry() {
+  for (int i = 0; i < PIN_DIGIT_COUNT; i++) {
+    pin_entry_state.pin_digits[i] = 10;  // 10 = empty
+  }
+  pin_entry_state.current_digit = 0;
+  pin_entry_state.pin_complete = false;
+  pin_entry_state.complete_pin = 0;
+  show_cursor = true;
+  cursor_blink_timer = 0;
+}
+
+/// Helper: Update cursor blink animation
+void update_cursor_blink() {
+  cursor_blink_timer++;
+  if (cursor_blink_timer >= 30) {  // ~0.5 second at 60fps
+    show_cursor = !show_cursor;
+    cursor_blink_timer = 0;
+  }
+}
+
+/// Helper: Check if PIN is complete
+bool is_pin_complete() {
+  for (int i = 0; i < PIN_DIGIT_COUNT; i++) {
+    if (pin_entry_state.pin_digits[i] > 9) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/// Helper: Convert PIN digits to number
+uint32_t pin_to_number() {
+  uint32_t pin = 0;
+  for (int i = 0; i < PIN_DIGIT_COUNT; i++) {
+    pin = pin * 10 + pin_entry_state.pin_digits[i];
+  }
+  return pin;
+}
+
+/// Helper: Render single PIN digit box
+void render_pin_digit(int x, int y, uint32_t digit, bool is_current, bool has_value) {
+  // Digit box background
+  uint32_t box_color = is_current ? UI_COLOR_PRIMARY_BLUE : RGBA8(0x2C, 0x2C, 0x2E, 255);
+  draw_rounded_rectangle(x, y, PIN_DIGIT_WIDTH, PIN_DIGIT_HEIGHT, 4, box_color);
+
+  // Digit text or cursor
+  if (has_value && digit <= 9) {
+    char digit_text[2] = {'0' + digit, '\0'};
+    int text_w = vita2d_font_text_width(font, 40, digit_text);
+    int text_x = x + (PIN_DIGIT_WIDTH / 2) - (text_w / 2);
+    int text_y = y + (PIN_DIGIT_HEIGHT / 2) + 15;
+    vita2d_font_draw_text(font, text_x, text_y, UI_COLOR_TEXT_PRIMARY, 40, digit_text);
+  } else if (is_current && show_cursor) {
+    // Blinking cursor
+    int cursor_x = x + PIN_DIGIT_WIDTH / 2;
+    int cursor_y1 = y + 15;
+    int cursor_y2 = y + PIN_DIGIT_HEIGHT - 15;
+    vita2d_draw_line(cursor_x, cursor_y1, cursor_x, cursor_y2, UI_COLOR_TEXT_PRIMARY);
+  }
+}
+
+/// Draw VitaRPS5-style PIN entry registration screen
 /// @return whether the dialog should keep rendering
 bool draw_registration_dialog() {
-  // VitaRPS5-style clean registration card (centered on screen)
-  int card_w = 700;
-  int card_h = 450;
-  int card_x = (VITA_WIDTH - card_w) / 2;
-  int card_y = (VITA_HEIGHT - card_h) / 2;
+  // Update cursor blink
+  update_cursor_blink();
 
-  draw_card_with_shadow(card_x, card_y, card_w, card_h, 12, UI_COLOR_CARD_BG);
+  // Card centered on screen
+  int card_x = (VITA_WIDTH - PIN_CARD_WIDTH) / 2;
+  int card_y = (VITA_HEIGHT - PIN_CARD_HEIGHT) / 2;
+
+  draw_card_with_shadow(card_x, card_y, PIN_CARD_WIDTH, PIN_CARD_HEIGHT, 12, UI_COLOR_CARD_BG);
 
   // Title
   vita2d_font_draw_text(font, card_x + 20, card_y + 50, UI_COLOR_TEXT_PRIMARY, 28,
@@ -2369,7 +2408,7 @@ bool draw_registration_dialog() {
     if (context.active_host->discovery_state && context.active_host->discovery_state->host_addr) {
       host_ip = context.active_host->discovery_state->host_addr;
     } else if (context.active_host->registered_state && context.active_host->registered_state->ap_ssid) {
-      host_ip = context.active_host->registered_state->ap_ssid;  // Fallback to registered info
+      host_ip = context.active_host->registered_state->ap_ssid;
     }
 
     if (host_ip) {
@@ -2380,34 +2419,61 @@ bool draw_registration_dialog() {
     vita2d_font_draw_text(font, card_x + 20, card_y + 100, UI_COLOR_TEXT_SECONDARY, 20, console_info);
   }
 
-  // Simple instructions (minimal and clean)
+  // Instructions
   vita2d_font_draw_text(font, card_x + 20, card_y + 150, UI_COLOR_TEXT_PRIMARY, 20,
                         "Enter the 8-digit session PIN displayed on your PS5:");
 
-  // PIN input area (centered in card, below instructions)
-  int pin_input_y = card_y + 220;
-  long int link_code = number_input(UI_MAIN_WIDGET_TEXT_INPUT | 0, card_x + 20, pin_input_y, card_w - 40, 70, NULL, LINK_CODE);
-  if (link_code >= 0) {
-    LINK_CODE = link_code;
+  // PIN digit boxes (centered in card)
+  int pin_total_width = (PIN_DIGIT_WIDTH * PIN_DIGIT_COUNT) + (PIN_DIGIT_SPACING * (PIN_DIGIT_COUNT - 1));
+  int pin_start_x = card_x + (PIN_CARD_WIDTH - pin_total_width) / 2;
+  int pin_y = card_y + 220;
+
+  for (int i = 0; i < PIN_DIGIT_COUNT; i++) {
+    int x = pin_start_x + i * (PIN_DIGIT_WIDTH + PIN_DIGIT_SPACING);
+    bool is_current = (pin_entry_state.current_digit == i);
+    bool has_value = (pin_entry_state.pin_digits[i] <= 9);
+    render_pin_digit(x, pin_y, pin_entry_state.pin_digits[i], is_current, has_value);
   }
 
-  // Navigation hints at bottom of card (clean and simple)
-  vita2d_font_draw_text(font, card_x + 20, card_y + card_h - 50, UI_COLOR_TEXT_SECONDARY, 18,
-                        "X: Confirm PIN     Triangle: Cancel");
+  // Navigation hints
+  vita2d_font_draw_text(font, card_x + 20, card_y + PIN_CARD_HEIGHT - 50, UI_COLOR_TEXT_SECONDARY, 18,
+                        "D-Pad: Navigate/Enter digits     X: Confirm     Triangle: Cancel");
 
-  if (btn_pressed(SCE_CTRL_CROSS)) {
-    if (LINK_CODE >= 0) {
-      LOGD("User input link code: %d", LINK_CODE);
-      host_register(context.active_host, LINK_CODE);
-    } else {
-      LOGD("User exited registration screen without inputting link code");
+  // Input handling
+  if (btn_pressed(SCE_CTRL_LEFT)) {
+    if (pin_entry_state.current_digit > 0) {
+      pin_entry_state.current_digit--;
     }
-  }
-  if (btn_pressed(SCE_CTRL_CIRCLE) || btn_pressed(SCE_CTRL_CROSS)) {
-    LINK_CODE = -1;
-    context.ui_state.next_active_item = UI_MAIN_WIDGET_SETTINGS_BTN;
+  } else if (btn_pressed(SCE_CTRL_RIGHT)) {
+    if (pin_entry_state.current_digit < PIN_DIGIT_COUNT - 1) {
+      pin_entry_state.current_digit++;
+    }
+  } else if (btn_pressed(SCE_CTRL_UP)) {
+    uint32_t* digit = &pin_entry_state.pin_digits[pin_entry_state.current_digit];
+    if (*digit > 9) *digit = 0;
+    else *digit = (*digit + 1) % 10;
+  } else if (btn_pressed(SCE_CTRL_DOWN)) {
+    uint32_t* digit = &pin_entry_state.pin_digits[pin_entry_state.current_digit];
+    if (*digit > 9) *digit = 9;
+    else *digit = (*digit + 9) % 10;
+  } else if (btn_pressed(SCE_CTRL_SQUARE)) {
+    // Clear current digit
+    pin_entry_state.pin_digits[pin_entry_state.current_digit] = 10;
+  } else if (btn_pressed(SCE_CTRL_CROSS)) {
+    // Confirm PIN if complete
+    if (is_pin_complete()) {
+      uint32_t pin = pin_to_number();
+      LOGD("User entered PIN: %08u", pin);
+      host_register(context.active_host, pin);
+      reset_pin_entry();
+      return false;
+    }
+  } else if (btn_pressed(SCE_CTRL_TRIANGLE)) {
+    // Cancel
+    reset_pin_entry();
     return false;
   }
+
   return true;
 }
 
