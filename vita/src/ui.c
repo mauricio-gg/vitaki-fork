@@ -2105,12 +2105,12 @@ static void draw_controller_mappings_tab(int content_x, int content_y, int conte
                           UI_COLOR_TEXT_PRIMARY, FONT_SIZE_SMALL, mappings[i].ps5_button);
   }
 
-  // Vita diagram (right panel) - professional assets
+  // Vita diagram (right panel) - professional assets with white background
   int diagram_x = content_x + panel_w + panel_spacing;
-  draw_card_with_shadow(diagram_x, panel_y, panel_w, panel_h, 8, UI_COLOR_CARD_BG);
+  draw_card_with_shadow(diagram_x, panel_y, panel_w, panel_h, 8, RGBA8(255, 255, 255, 255));
 
   vita2d_font_draw_text(font, diagram_x + 15, panel_y + 30,
-                        UI_COLOR_TEXT_PRIMARY, FONT_SIZE_SUBHEADER, "Vita Layout");
+                        RGBA8(0, 0, 0, 255), FONT_SIZE_SUBHEADER, "Vita Layout");
 
   // Draw Vita Front diagram (centered in card)
   if (vita_front) {
@@ -2715,13 +2715,20 @@ void draw_ui() {
           vita2d_draw_rectangle(0, 0, VITA_WIDTH, VITA_HEIGHT, UI_COLOR_BACKGROUND);
         }
 
-        // Draw Vita RPS5 logo in top-right corner for professional branding
+        // Draw Vita RPS5 logo in top-right corner for professional branding (small with transparency)
         if (vita_rps5_logo) {
           int logo_w = vita2d_texture_get_width(vita_rps5_logo);
           int logo_h = vita2d_texture_get_height(vita_rps5_logo);
-          int logo_x = VITA_WIDTH - logo_w - 20;  // 20px margin from right
+          float logo_scale = 0.1f;  // 10% of original size
+          int scaled_w = (int)(logo_w * logo_scale);
+          int scaled_h = (int)(logo_h * logo_scale);
+          int logo_x = VITA_WIDTH - scaled_w - 20;  // 20px margin from right
           int logo_y = 20;  // 20px margin from top
-          vita2d_draw_texture(vita_rps5_logo, logo_x, logo_y);
+
+          // Draw with 50% transparency (alpha = 128)
+          vita2d_draw_texture_tint_scale(vita_rps5_logo, logo_x, logo_y,
+                                         logo_scale, logo_scale,
+                                         RGBA8(255, 255, 255, 128));
         }
 
         // Render the current screen
