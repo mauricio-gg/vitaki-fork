@@ -146,6 +146,18 @@ typedef struct {
 static ConsoleCardCache card_cache = {0};
 #define CARD_CACHE_UPDATE_INTERVAL_US (10 * 1000000)  // 10 seconds in microseconds
 
+// Wave parallax animation state
+#define WAVE_LAYER_COUNT 3
+typedef struct {
+  float offset_x;        // Current horizontal scroll offset
+  float speed;           // Pixels per frame
+  float y_position;      // Vertical position
+  float alpha;           // Transparency (0.0-1.0)
+} WaveLayer;
+
+static WaveLayer wave_layers[WAVE_LAYER_COUNT] = {0};
+static bool wave_animation_initialized = false;
+
 // PIN entry state for VitaRPS5-style registration
 typedef struct {
   uint32_t pin_digits[8];  // Each digit 0-9, or 10 for empty
@@ -492,12 +504,81 @@ void render_particles() {
   }
 }
 
-/// Render VitaRPS5 wave navigation sidebar
-void render_wave_navigation() {
-  // Draw wave background textures
-  if (wave_top) {
-    vita2d_draw_texture(wave_top, 0, 0);
+/// Initialize wave parallax animation layers
+void init_wave_animation() {
+  if (wave_animation_initialized) return;
+
+  // Layer 0: Background layer (slowest, most transparent)
+  wave_layers[0].offset_x = 0.0f;
+  wave_layers[0].speed = 0.2f;
+  wave_layers[0].y_position = 0.0f;
+  wave_layers[0].alpha = 0.3f;
+
+  // Layer 1: Middle layer (medium speed, medium transparency)
+  wave_layers[1].offset_x = 0.0f;
+  wave_layers[1].speed = 0.5f;
+  wave_layers[1].y_position = VITA_HEIGHT * 0.25f;
+  wave_layers[1].alpha = 0.5f;
+
+  // Layer 2: Foreground layer (fastest, most opaque)
+  wave_layers[2].offset_x = 0.0f;
+  wave_layers[2].speed = 0.8f;
+  wave_layers[2].y_position = VITA_HEIGHT * 0.5f;
+  wave_layers[2].alpha = 0.7f;
+
+  wave_animation_initialized = true;
+}
+
+/// Update wave parallax animation
+void update_wave_animation() {
+  if (!wave_animation_initialized) {
+    init_wave_animation();
   }
+
+  // Get wave texture width for wrapping
+  int wave_width = wave_top ? vita2d_texture_get_width(wave_top) : WAVE_NAV_WIDTH;
+
+  for (int i = 0; i < WAVE_LAYER_COUNT; i++) {
+    wave_layers[i].offset_x += wave_layers[i].speed;
+
+    // Wrap around when offset exceeds wave width
+    if (wave_layers[i].offset_x >= wave_width) {
+      wave_layers[i].offset_x -= wave_width;
+    }
+  }
+}
+
+/// Render VitaRPS5 wave navigation sidebar with parallax animation
+void render_wave_navigation() {
+  // Draw animated wave layers with parallax effect
+  if (wave_top) {
+    int wave_width = vita2d_texture_get_width(wave_top);
+    int wave_height = vita2d_texture_get_height(wave_top);
+
+    // Draw each wave layer with different offsets and transparency
+    for (int i = 0; i < WAVE_LAYER_COUNT; i++) {
+      // Calculate draw positions for seamless wrapping
+      float x1 = -wave_layers[i].offset_x;
+      float x2 = x1 + wave_width;
+      float y = wave_layers[i].y_position;
+
+      // Set alpha tinting (note: vita2d color format is ABGR)
+      uint32_t alpha_value = (uint32_t)(wave_layers[i].alpha * 255.0f);
+      uint32_t tint_color = (alpha_value << 24) | 0x00FFFFFF;
+
+      // Draw first instance
+      if (x1 < WAVE_NAV_WIDTH) {
+        vita2d_draw_texture_tint(wave_top, x1, y, tint_color);
+      }
+
+      // Draw second instance for seamless wrapping
+      if (x2 < WAVE_NAV_WIDTH) {
+        vita2d_draw_texture_tint(wave_top, x2, y, tint_color);
+      }
+    }
+  }
+
+  // Draw static bottom wave (optional, can be removed or animated too)
   if (wave_bottom) {
     vita2d_draw_texture(wave_bottom, 0, VITA_HEIGHT - vita2d_texture_get_height(wave_bottom));
   }
@@ -1130,7 +1211,8 @@ UIScreenType draw_main_menu() {
   update_particles();
   render_particles();
 
-  // Render VitaRPS5 wave navigation sidebar
+  // Update and render VitaRPS5 wave navigation sidebar with parallax animation
+  update_wave_animation();
   render_wave_navigation();
 
   // Render VitaRPS5 console cards instead of host tiles
@@ -1408,6 +1490,7 @@ bool draw_settings() {
   // Render particle background and wave navigation
   update_particles();
   render_particles();
+  update_wave_animation();
   render_wave_navigation();
 
   // Main content area (avoiding wave nav sidebar)
@@ -1713,6 +1796,7 @@ UIScreenType draw_profile_screen() {
   // Render particle background and wave navigation
   update_particles();
   render_particles();
+  update_wave_animation();
   render_wave_navigation();
 
   // Main content area
@@ -2020,6 +2104,7 @@ bool draw_controller_config_screen() {
   // Render particle background and wave navigation
   update_particles();
   render_particles();
+  update_wave_animation();
   render_wave_navigation();
 
   // Main content area (avoiding wave nav sidebar)
