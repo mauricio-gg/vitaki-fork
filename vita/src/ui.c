@@ -120,6 +120,8 @@ vita2d_texture *wave_top, *wave_bottom;
 vita2d_texture *ellipse_green, *ellipse_yellow, *ellipse_red;
 vita2d_texture *button_add_new, *console_card_bg;
 vita2d_texture *icon_play, *icon_settings, *icon_controller, *icon_profile;
+vita2d_texture *background_gradient, *vita_rps5_logo;
+vita2d_texture *vita_front, *vita_back;
 
 // Particle system state
 static Particle particles[PARTICLE_COUNT];
@@ -753,6 +755,12 @@ void load_textures() {
   icon_settings = vita2d_load_PNG_file("app0:/assets/vitarps5/icon_settings.png");
   icon_controller = vita2d_load_PNG_file("app0:/assets/vitarps5/icon_controller.png");
   icon_profile = vita2d_load_PNG_file("app0:/assets/vitarps5/icon_profile.png");
+
+  // Load new professional assets
+  background_gradient = vita2d_load_PNG_file("app0:/assets/background.png");
+  vita_rps5_logo = vita2d_load_PNG_file("app0:/assets/Vita_RPS5_Logo.png");
+  vita_front = vita2d_load_PNG_file("app0:/assets/Vita_Front.png");
+  vita_back = vita2d_load_PNG_file("app0:/assets/Vita_Back.png");
 }
 
 /// Check if a given region is touched on the front touch screen
@@ -2097,36 +2105,36 @@ static void draw_controller_mappings_tab(int content_x, int content_y, int conte
                           UI_COLOR_TEXT_PRIMARY, FONT_SIZE_SMALL, mappings[i].ps5_button);
   }
 
-  // Vita diagram (right panel) - simplified
+  // Vita diagram (right panel) - professional assets
   int diagram_x = content_x + panel_w + panel_spacing;
   draw_card_with_shadow(diagram_x, panel_y, panel_w, panel_h, 8, UI_COLOR_CARD_BG);
 
   vita2d_font_draw_text(font, diagram_x + 15, panel_y + 30,
                         UI_COLOR_TEXT_PRIMARY, FONT_SIZE_SUBHEADER, "Vita Layout");
 
-  // Simple Vita representation (centered in card)
-  int vita_center_x = diagram_x + panel_w/2;
-  int vita_center_y = panel_y + panel_h/2 + 20;
-  int btn_size = 12;
-  uint32_t btn_color = UI_COLOR_PRIMARY_BLUE;
+  // Draw Vita Front diagram (centered in card)
+  if (vita_front) {
+    int img_w = vita2d_texture_get_width(vita_front);
+    int img_h = vita2d_texture_get_height(vita_front);
 
-  // D-Pad (left)
-  int dpad_x = vita_center_x - 60;
-  vita2d_draw_rectangle(dpad_x, vita_center_y - 15, btn_size, btn_size, btn_color);
-  vita2d_draw_rectangle(dpad_x, vita_center_y + 5, btn_size, btn_size, btn_color);
-  vita2d_draw_rectangle(dpad_x - 10, vita_center_y - 5, btn_size, btn_size, btn_color);
-  vita2d_draw_rectangle(dpad_x + 10, vita_center_y - 5, btn_size, btn_size, btn_color);
+    // Scale to fit panel height while maintaining aspect ratio
+    float max_h = panel_h - 60;  // Leave space for title
+    float max_w = panel_w - 30;  // Leave margins
+    float scale = 1.0f;
 
-  // Face buttons (right)
-  int face_x = vita_center_x + 50;
-  vita2d_draw_rectangle(face_x, vita_center_y - 15, btn_size, btn_size, btn_color);
-  vita2d_draw_rectangle(face_x, vita_center_y + 5, btn_size, btn_size, btn_color);
-  vita2d_draw_rectangle(face_x - 10, vita_center_y - 5, btn_size, btn_size, btn_color);
-  vita2d_draw_rectangle(face_x + 10, vita_center_y - 5, btn_size, btn_size, btn_color);
+    if (img_h > max_h || img_w > max_w) {
+      float scale_h = max_h / img_h;
+      float scale_w = max_w / img_w;
+      scale = (scale_h < scale_w) ? scale_h : scale_w;
+    }
 
-  // Shoulders (top)
-  vita2d_draw_rectangle(vita_center_x - 80, vita_center_y - 50, 25, 8, btn_color);
-  vita2d_draw_rectangle(vita_center_x + 55, vita_center_y - 50, 25, 8, btn_color);
+    int scaled_w = (int)(img_w * scale);
+    int scaled_h = (int)(img_h * scale);
+    int img_x = diagram_x + (panel_w - scaled_w) / 2;
+    int img_y = panel_y + 50 + (panel_h - 50 - scaled_h) / 2;
+
+    vita2d_draw_texture_scale(vita_front, img_x, img_y, scale, scale);
+  }
 }
 
 /// Draw Settings Tab content (controller-related settings)
@@ -2699,8 +2707,22 @@ void draw_ui() {
       if (!context.stream.is_streaming) {
         vita2d_start_drawing();
         vita2d_clear_screen();
-        // Draw modern charcoal background
-        vita2d_draw_rectangle(0, 0, VITA_WIDTH, VITA_HEIGHT, UI_COLOR_BACKGROUND);
+
+        // Draw gradient background if available, otherwise fallback to solid color
+        if (background_gradient) {
+          vita2d_draw_texture(background_gradient, 0, 0);
+        } else {
+          vita2d_draw_rectangle(0, 0, VITA_WIDTH, VITA_HEIGHT, UI_COLOR_BACKGROUND);
+        }
+
+        // Draw Vita RPS5 logo in top-right corner for professional branding
+        if (vita_rps5_logo) {
+          int logo_w = vita2d_texture_get_width(vita_rps5_logo);
+          int logo_h = vita2d_texture_get_height(vita_rps5_logo);
+          int logo_x = VITA_WIDTH - logo_w - 20;  // 20px margin from right
+          int logo_y = 20;  // 20px margin from top
+          vita2d_draw_texture(vita_rps5_logo, logo_x, logo_y);
+        }
 
         // Render the current screen
         if (screen == UI_SCREEN_TYPE_MAIN) {

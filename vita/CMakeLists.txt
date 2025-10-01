@@ -133,5 +133,10 @@ if(CHIAKI_IS_VITA)
         FILE res/assets/vitarps5/user_provided/icons/PS5_Controller_White.png assets/vitarps5/icon_controller.png
         FILE res/assets/vitarps5/user_provided/icons/profile.png assets/vitarps5/icon_profile.png
         FILE res/assets/ps5.png assets/vitarps5/icon_play.png
+        # Professional UI assets (gradient background, logo, controller diagrams)
+        FILE assets/background.png assets/background.png
+        FILE assets/Vita_RPS5_Logo.png assets/Vita_RPS5_Logo.png
+        FILE assets/Vita_Front.png assets/Vita_Front.png
+        FILE assets/Vita_Back.png assets/Vita_Back.png
     )
 endif()
