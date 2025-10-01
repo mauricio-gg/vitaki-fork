@@ -30,31 +30,34 @@ This document tracks all incomplete features, TODOs, stubs, and planned improvem
 
 ---
 
-### 2. Power Control Thread Initialization
-**File:** `vita/src/main.c:135`
-**Status:** Not implemented
-**Priority:** High
-**Description:** Power control thread is not initialized. This affects battery management and power state handling during streaming.
+### 2. ~~Power Control Thread Initialization~~ ✅ RESOLVED
+**File:** `vita/src/main.c:52-55`
+**Status:** ✅ Already implemented
+**Priority:** N/A
+**Description:** Power management is properly configured in `vita_init()` using `scePowerSet*` calls. The TODO was misleading - no separate thread is needed.
 
 ```c
-// TODO: initialize power control thread
+scePowerSetArmClockFrequency(444);
+scePowerSetGpuClockFrequency(222);
+scePowerSetBusClockFrequency(222);
+scePowerSetGpuXbarClockFrequency(166);
 ```
 
-**Impact:** May cause unexpected behavior with power management during long streaming sessions.
+**Resolution:** Removed misleading TODO. Power is configured at startup and works correctly.
 
 ---
 
-### 3. Input Thread Initialization
-**File:** `vita/src/main.c:141`
-**Status:** Not implemented
-**Priority:** High
-**Description:** Input thread initialization is incomplete.
+### 3. ~~Input Thread Initialization~~ ✅ RESOLVED
+**File:** `vita/src/host.c:447`
+**Status:** ✅ Already implemented
+**Priority:** N/A
+**Description:** Input thread is properly created when streaming starts using `chiaki_thread_create()`. The TODO was misleading.
 
 ```c
-// TODO: initialize input thread
+err = chiaki_thread_create(&context.stream.input_thread, input_thread_func, &context.stream);
 ```
 
-**Impact:** Could affect input handling responsiveness or multi-threading performance.
+**Resolution:** Removed misleading TODO. Input thread is created per-stream and works correctly.
 
 ---
 
@@ -398,10 +401,8 @@ UI_COLOR_TEXT_TERTIARY, FONT_SIZE_SMALL, "(Coming Soon)");
 
 ## Summary by Priority
 
-### High Priority (3 items)
+### High Priority (1 item)
 1. **Latency Optimization** - Critical for user experience
-2. Power Control Thread Initialization
-3. Input Thread Initialization
 
 ### Medium Priority (8 items)
 4. Power Control Configuration

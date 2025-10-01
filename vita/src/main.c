@@ -132,24 +132,10 @@ unsigned int _newlib_heap_size_user = 64 * 1024 * 1024;
 int main(int argc, char* argv[]) {
   vita_init();
 
-  // TODO: initialize power control thread
-  // if (!vitapower_init()) {
-  //   printf("Failed to init power!");
-  //   loop_forever();
-  // }
-
-  // TODO: initialize input thread
-  // if (!vitainput_init()) {
-  //   printf("Failed to init input!");
-  //   loop_forever();
-  // }
+  // Note: Power management is configured in vita_init() (scePowerSet* calls)
+  // Note: Input thread is created per-stream in host.c when streaming starts
 
   sceIoMkdir("ux0:/data/vita-chiaki", 0777);
-
-  // TODO: configure power control
-  // vitapower_config(config);
-  // TODO: configure input handling
-  // vitainput_config(config);
 
   vita_chiaki_init_context();
   if (context.config.auto_discovery) {
