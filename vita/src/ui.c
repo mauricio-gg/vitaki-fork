@@ -1558,6 +1558,13 @@ static void draw_settings_streaming_tab(int content_x, int content_y, int conten
                      context.config.auto_discovery, settings_state.selected_item == 3);
   vita2d_font_draw_text(font, content_x + 15, y + item_h/2 + 6,
                         UI_COLOR_TEXT_PRIMARY, FONT_SIZE_BODY, "Auto Discovery");
+  y += item_h + item_spacing;
+
+  // Show Latency toggle
+  draw_toggle_switch(content_x + content_w - 70, y + (item_h - 30)/2, 60, 30,
+                     context.config.show_latency, settings_state.selected_item == 4);
+  vita2d_font_draw_text(font, content_x + 15, y + item_h/2 + 6,
+                        UI_COLOR_TEXT_PRIMARY, FONT_SIZE_BODY, "Show Latency");
 }
 
 /// Draw Video Settings tab content
@@ -1692,7 +1699,7 @@ bool draw_settings() {
   }
 
   // Determine max items for current tab
-  int max_items = 4; // Default
+  int max_items = 5; // Streaming tab has 5 items now (added Show Latency)
   if (settings_state.current_tab == SETTINGS_TAB_VIDEO ||
       settings_state.current_tab == SETTINGS_TAB_NETWORK) {
     max_items = 3;
@@ -1724,6 +1731,10 @@ bool draw_settings() {
         } else if (settings_state.selected_item == 3) {
           // Auto discovery toggle
           context.config.auto_discovery = !context.config.auto_discovery;
+          config_serialize(&context.config);
+        } else if (settings_state.selected_item == 4) {
+          // Show latency toggle
+          context.config.show_latency = !context.config.show_latency;
           config_serialize(&context.config);
         }
         break;
@@ -1828,11 +1839,32 @@ static void draw_connection_info_card(int x, int y, int width, int height, bool 
   vita2d_font_draw_text(font, content_x + 150, content_y, UI_COLOR_TEXT_PRIMARY, 14, console_ip);
   content_y += line_h;
 
-  // Latency (stub)
-  // TODO(PHASE2-STUB): Latency - Need stream stats integration
-  vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_SECONDARY, 14, "Latency:");
-  vita2d_font_draw_text(font, content_x + 150, content_y, UI_COLOR_TEXT_SECONDARY, 14, "N/A");
-  content_y += line_h;
+  // Latency (real-time if enabled)
+  if (context.config.show_latency) {
+    vita2d_font_draw_text(font, content_x, content_y, UI_COLOR_TEXT_SECONDARY, FONT_SIZE_SMALL, "Latency:");
+
+    char latency_text[32] = "N/A";
+    if (context.stream.session_init && context.stream.session.rtt_us > 0) {
+      uint32_t latency_ms = (uint32_t)(context.stream.session.rtt_us / 1000);
+      snprintf(latency_text, sizeof(latency_text), "%u ms", latency_ms);
+    }
+
+    // Color code: Green <30ms, Yellow 30-60ms, Red >60ms
+    uint32_t latency_color = UI_COLOR_TEXT_SECONDARY;
+    if (context.stream.session_init && context.stream.session.rtt_us > 0) {
+      uint32_t latency_ms = (uint32_t)(context.stream.session.rtt_us / 1000);
+      if (latency_ms < 30) {
+        latency_color = RGBA8(0x4C, 0xAF, 0x50, 255);  // Green
+      } else if (latency_ms < 60) {
+        latency_color = RGBA8(0xFF, 0xB7, 0x4D, 255);  // Yellow
+      } else {
+        latency_color = RGBA8(0xF4, 0x43, 0x36, 255);  // Red
+      }
+    }
+
+    vita2d_font_draw_text(font, content_x + 150, content_y, latency_color, FONT_SIZE_SMALL, latency_text);
+    content_y += line_h;
+  }
 
   // Connection Status
   bool is_connected = context.active_host != NULL;

@@ -1,8 +1,8 @@
 # Phase 2 Complete - Modern UI Screens Implementation
 
 **Date**: October 1, 2025
-**Status**: ✅ Complete and Integrated
-**Version**: v0.1.73
+**Status**: ✅ Complete and Refined
+**Version**: v0.1.77 (Final)
 
 ---
 
@@ -14,12 +14,13 @@ Successfully implemented and integrated three modern UI screens for vitaki-fork,
 
 ## Screens Implemented
 
-### 1. Settings Screen (v0.1.68)
+### 1. Settings Screen (v0.1.77 - Refined)
 **Features:**
-- 4 color-coded tabs (Streaming/Video/Network/Controller)
+- 3 color-coded tabs (Streaming/Video/Network) - Controller moved to dedicated screen
 - Modern toggle switches and dropdown controls
 - L1/R1 tab navigation, D-Pad item navigation
 - Auto-save with `config_serialize()`
+- 16pt minimum font size (Phase 2 refinement)
 
 **Functional Settings:**
 - Resolution: 720p/1080p → `config.resolution`
@@ -60,26 +61,46 @@ Successfully implemented and integrated three modern UI screens for vitaki-fork,
 
 ---
 
-### 3. Controller Configuration Screen (v0.1.72)
+### 3. Controller Configuration Screen (v0.1.77 - Redesigned)
 **Features:**
-- Button mapping table (PS Vita → PS5)
-- Simplified PS Vita controller diagram
-- Two-panel layout with selection highlighting
-- Map ID cycling (0→7→25→99)
+- TWO TAB STRUCTURE: "Button Mappings" and "Controller Settings"
+- Mappings Tab: Scheme selector with Left/Right cycling, button table, Vita diagram
+- Settings Tab: Circle Button Confirm, Motion Controls (stub), Touchpad as Buttons (stub)
+- Scheme cycling: 0→1→...→7→25→99→0 (Left/Right D-pad)
+- Visual arrows (< Scheme N: Name >) for console-like UX
 
 **Visual Design:**
-- Card-based layout with PlayStation Blue borders
-- Interactive row highlighting
+- Flat tab bar design (no dual shading)
+- Card-based layout with PlayStation Blue selection borders
+- Scheme selector at top with arrow indicators
 - Vita diagram showing buttons, D-pad, shoulders
-- Map ID display at bottom
+- All fonts meet 16pt minimum standard
 
 **Navigation:**
-- Left/Right: Switch between table and diagram
-- Up/Down: Navigate button rows (in table)
-- X: Cycle through map IDs
+- L1/R1: Switch tabs (Mappings/Settings)
+- Left/Right: Cycle through schemes (in Mappings tab)
+- Up/Down: Navigate settings (in Settings tab)
+- X: Toggle settings
 - Circle: Exit to main menu
 
-**Lines of Code:** ~260 lines
+**Lines of Code:** ~320 lines
+
+---
+
+## Phase 2 Refinements (v0.1.74-77)
+
+### User Feedback Improvements
+1. **Tab Bar Colors (v0.1.74)**: Removed dual shading - flat single color per tab
+2. **Font Hierarchy (v0.1.74)**: Established constants (24/18/16/16pt) with 16pt minimum
+3. **Settings Consolidation (v0.1.75)**: Removed Controller tab, moved all to dedicated screen
+4. **Controller Redesign (v0.1.75)**: Two-tab structure with scheme cycling
+5. **Scheme Selector UX (v0.1.75)**: Changed from dropdown to Left/Right D-pad cycling
+6. **Font Size Increase (v0.1.77)**: Increased minimum from 14pt to 16pt for clarity
+
+### Refinement Stats
+- **Commits**: 4 refinement commits (v0.1.74-77)
+- **User Feedback Items**: 6 improvements implemented
+- **Code Quality**: Zero orphaned functions, clean replacements
 
 ---
 

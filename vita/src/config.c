@@ -78,6 +78,7 @@ void config_parse(VitaChiakiConfig* cfg) {
   cfg->resolution = CHIAKI_VIDEO_RESOLUTION_PRESET_540p;
   cfg->fps = CHIAKI_VIDEO_FPS_PRESET_30;
   cfg->controller_map_id = 0;
+  cfg->show_latency = false;  // Default: latency display disabled
 
   bool circle_btn_confirm_default = get_circle_btn_confirm_default();
   cfg->circle_btn_confirm = circle_btn_confirm_default;
@@ -141,6 +142,9 @@ void config_parse(VitaChiakiConfig* cfg) {
 
       datum = toml_bool_in(settings, "circle_btn_confirm");
       cfg->circle_btn_confirm = datum.ok ? datum.u.b : circle_btn_confirm_default;
+
+      datum = toml_bool_in(settings, "show_latency");
+      cfg->show_latency = datum.ok ? datum.u.b : false;  // Default: disabled
     }
 
     toml_array_t* regist_hosts = toml_array_in(parsed, "registered_hosts");
@@ -382,6 +386,8 @@ void config_serialize(VitaChiakiConfig* cfg) {
   fprintf(fp, "controller_map_id = %d\n", cfg->controller_map_id);
   fprintf(fp, "circle_btn_confirm = %s\n",
           cfg->circle_btn_confirm ? "true" : "false");
+  fprintf(fp, "show_latency = %s\n",
+          cfg->show_latency ? "true" : "false");
 
   for (int i = 0; i < cfg->num_manual_hosts; i++) {
     VitaChiakiHost* host = cfg->manual_hosts[i];

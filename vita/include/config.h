@@ -33,6 +33,7 @@ typedef struct vita_chiaki_config_t {
   // controller map id // TODO should probably replace with fully customizable map
   int controller_map_id;
   bool circle_btn_confirm;
+  bool show_latency;  // Display real-time latency in Profile screen
 } VitaChiakiConfig;
 
 void config_parse(VitaChiakiConfig* cfg);
