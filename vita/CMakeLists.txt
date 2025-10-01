@@ -138,5 +138,6 @@ if(CHIAKI_IS_VITA)
         FILE assets/Vita_RPS5_Logo.png assets/Vita_RPS5_Logo.png
         FILE assets/Vita_Front.png assets/Vita_Front.png
         FILE assets/Vita_Back.png assets/Vita_Back.png
+        FILE assets/PS5_logo.png assets/PS5_logo.png
     )
 endif()

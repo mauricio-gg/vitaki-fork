@@ -122,6 +122,7 @@ vita2d_texture *button_add_new, *console_card_bg;
 vita2d_texture *icon_play, *icon_settings, *icon_controller, *icon_profile;
 vita2d_texture *background_gradient, *vita_rps5_logo;
 vita2d_texture *vita_front, *vita_back;
+vita2d_texture *ps5_logo;
 
 // Particle system state
 static Particle particles[PARTICLE_COUNT];
@@ -154,13 +155,11 @@ typedef struct {
 } ConsoleCardInfo;
 
 static int selected_console_index = 0;
-static bool add_new_button_selected = false;
 
 // Focus system for D-pad navigation
 typedef enum {
   FOCUS_NAV_BAR = 0,      // Wave navigation sidebar
-  FOCUS_CONSOLE_CARDS = 1, // Console cards area
-  FOCUS_ADD_NEW = 2        // Add New button
+  FOCUS_CONSOLE_CARDS = 1  // Console cards area (includes discovery card when empty)
 } FocusArea;
 
 static FocusArea current_focus = FOCUS_CONSOLE_CARDS;
@@ -607,15 +606,39 @@ void render_console_card(ConsoleCardInfo* console, int x, int y, bool selected) 
   uint32_t card_bg = is_unpaired ? RGBA8(0x25, 0x25, 0x28, 255) : UI_COLOR_CARD_BG;
   draw_card_with_shadow(x, y, CONSOLE_CARD_WIDTH, CONSOLE_CARD_HEIGHT, 12, card_bg);
 
-  // PS5 logo (centered, 1/3 from top)
+  // PS5 logo (centered, properly scaled for card)
   bool is_ps5 = console->host && chiaki_target_is_ps5(console->host->target);
-  vita2d_texture* logo = is_ps5 ? img_ps5 : img_ps4;
-  if (logo) {
-    int logo_w = vita2d_texture_get_width(logo);
-    int logo_h = vita2d_texture_get_height(logo);
-    int logo_x = x + (CONSOLE_CARD_WIDTH / 2) - (logo_w / 2);
-    int logo_y = y + (CONSOLE_CARD_HEIGHT / 3) - (logo_h / 2);
-    vita2d_draw_texture(logo, logo_x, logo_y);
+
+  if (is_ps5 && ps5_logo) {
+    int logo_w = vita2d_texture_get_width(ps5_logo);
+    int logo_h = vita2d_texture_get_height(ps5_logo);
+
+    // Scale logo to fit card width (max 60% of card width)
+    float max_width = CONSOLE_CARD_WIDTH * 0.6f;
+    float scale = max_width / logo_w;
+
+    int scaled_w = (int)(logo_w * scale);
+    int scaled_h = (int)(logo_h * scale);
+    int logo_x = x + (CONSOLE_CARD_WIDTH / 2) - (scaled_w / 2);
+    int logo_y = y + 50;  // Fixed position from top
+
+    // Dimmed for unpaired consoles
+    if (is_unpaired) {
+      vita2d_draw_texture_tint_scale(ps5_logo, logo_x, logo_y, scale, scale,
+                                     RGBA8(255, 255, 255, 100));
+    } else {
+      vita2d_draw_texture_scale(ps5_logo, logo_x, logo_y, scale, scale);
+    }
+  } else if (!is_ps5) {
+    // Fallback to PS4 icon for PS4 consoles
+    vita2d_texture* logo = img_ps4;
+    if (logo) {
+      int logo_w = vita2d_texture_get_width(logo);
+      int logo_h = vita2d_texture_get_height(logo);
+      int logo_x = x + (CONSOLE_CARD_WIDTH / 2) - (logo_w / 2);
+      int logo_y = y + (CONSOLE_CARD_HEIGHT / 3) - (logo_h / 2);
+      vita2d_draw_texture(logo, logo_x, logo_y);
+    }
   }
 
   // Console name bar (1/3 from bottom)
@@ -686,7 +709,7 @@ void render_console_grid() {
     int card_y = CONSOLE_CARD_START_Y;
 
     // Discovery card with selection border
-    if (current_focus == FOCUS_CONSOLE_CARDS || current_focus == FOCUS_ADD_NEW) {
+    if (current_focus == FOCUS_CONSOLE_CARDS) {
       draw_rounded_rectangle(card_x - 4, card_y - 4, CONSOLE_CARD_WIDTH + 8, CONSOLE_CARD_HEIGHT + 8, 12,
                             UI_COLOR_PRIMARY_BLUE);
     }
@@ -796,6 +819,7 @@ void load_textures() {
   vita_rps5_logo = vita2d_load_PNG_file("app0:/assets/Vita_RPS5_Logo.png");
   vita_front = vita2d_load_PNG_file("app0:/assets/Vita_Front.png");
   vita_back = vita2d_load_PNG_file("app0:/assets/Vita_Back.png");
+  ps5_logo = vita2d_load_PNG_file("app0:/assets/PS5_logo.png");
 }
 
 /// Check if a given region is touched on the front touch screen
@@ -1373,56 +1397,32 @@ UIScreenType draw_main_menu() {
       // Move up within nav bar
       selected_nav_icon = (selected_nav_icon - 1 + 4) % 4;
     } else if (current_focus == FOCUS_CONSOLE_CARDS && num_hosts > 0) {
-      // Move up within console cards
+      // Move up within console cards (cycle through)
       selected_console_index = (selected_console_index - 1 + num_hosts) % num_hosts;
-    } else if (current_focus == FOCUS_ADD_NEW) {
-      if (num_hosts > 0) {
-        // Move up from Add New to last console
-        current_focus = FOCUS_CONSOLE_CARDS;
-        selected_console_index = num_hosts - 1;
-      } else {
-        // No hosts - move back to console cards area (which will have no selection)
-        current_focus = FOCUS_CONSOLE_CARDS;
-      }
     }
   } else if (btn_pressed(SCE_CTRL_DOWN)) {
     if (current_focus == FOCUS_NAV_BAR) {
       // Move down within nav bar
       selected_nav_icon = (selected_nav_icon + 1) % 4;
-    } else if (current_focus == FOCUS_CONSOLE_CARDS) {
-      if (num_hosts > 0) {
-        if (selected_console_index == num_hosts - 1) {
-          // Move down from last console to Add New
-          current_focus = FOCUS_ADD_NEW;
-        } else {
-          // Move down within console cards
-          selected_console_index = (selected_console_index + 1) % num_hosts;
-        }
-      } else {
-        // No hosts - move to Add New button
-        current_focus = FOCUS_ADD_NEW;
-      }
+    } else if (current_focus == FOCUS_CONSOLE_CARDS && num_hosts > 0) {
+      // Move down within console cards (cycle through)
+      selected_console_index = (selected_console_index + 1) % num_hosts;
     }
   } else if (btn_pressed(SCE_CTRL_LEFT)) {
-    if (current_focus == FOCUS_CONSOLE_CARDS || current_focus == FOCUS_ADD_NEW) {
+    if (current_focus == FOCUS_CONSOLE_CARDS) {
       // Move left to nav bar
       last_console_selection = selected_console_index;
       current_focus = FOCUS_NAV_BAR;
     }
   } else if (btn_pressed(SCE_CTRL_RIGHT)) {
     if (current_focus == FOCUS_NAV_BAR) {
-      // Move right from nav bar to console cards
+      // Move right from nav bar to console cards/discovery card
+      current_focus = FOCUS_CONSOLE_CARDS;
       if (num_hosts > 0) {
-        current_focus = FOCUS_CONSOLE_CARDS;
         selected_console_index = last_console_selection;
-      } else {
-        current_focus = FOCUS_ADD_NEW;
       }
     }
   }
-
-  // Update visual selection states based on focus
-  add_new_button_selected = (current_focus == FOCUS_ADD_NEW);
 
   // === X BUTTON (Activate/Select highlighted element) ===
 
@@ -1461,8 +1461,8 @@ UIScreenType draw_main_menu() {
           host_idx++;
         }
       }
-    } else if (current_focus == FOCUS_ADD_NEW) {
-      // Activate Add New button - start discovery
+    } else if (current_focus == FOCUS_CONSOLE_CARDS && num_hosts == 0) {
+      // X button on discovery card - trigger discovery
       if (!context.discovery_enabled) {
         start_discovery(NULL, NULL);
       }
