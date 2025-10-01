@@ -1,35 +1,116 @@
-name: Build and Release VPK
+name: Create Release
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'  # Triggers on version tags like v1.0.0
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: 'patch'
 
 jobs:
-  build-vpk:
+  create-release:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'  # Only run on main branch
+
+    permissions:
+      contents: write
+      pull-requests: read
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           submodules: recursive
-          fetch-depth: 0  # Full history for proper versioning
+          fetch-depth: 0  # Full history for changelog
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Get version
-        id: get_version
+      - name: Get latest tag
+        id: get_latest_tag
         run: |
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/v}
+          # Get the latest tag, or default to v0.0.0 if no tags exist
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "Latest tag: $LATEST_TAG"
+
+      - name: Calculate new version
+        id: new_version
+        run: |
+          LATEST_TAG="${{ steps.get_latest_tag.outputs.LATEST_TAG }}"
+          VERSION_TYPE="${{ github.event.inputs.version_type }}"
+
+          # Remove 'v' prefix if present
+          VERSION=${LATEST_TAG#v}
+
+          # Split version into parts
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+
+          # Bump version based on type
+          case $VERSION_TYPE in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          NEW_TAG="v$NEW_VERSION"
+
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "NEW_TAG=$NEW_TAG" >> $GITHUB_OUTPUT
+          echo "New version: $NEW_TAG"
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          LATEST_TAG="${{ steps.get_latest_tag.outputs.LATEST_TAG }}"
+          NEW_TAG="${{ steps.new_version.outputs.NEW_TAG }}"
+
+          echo "Generating changelog from $LATEST_TAG to HEAD..."
+
+          # Get merged PRs since last tag
+          CHANGELOG=$(cat <<'EOF'
+          ## What's Changed
+
+          EOF
+          )
+
+          # Get commits since last tag with PR numbers
+          git log $LATEST_TAG..HEAD --merges --pretty=format:"- %s" | \
+            grep -E "Merge pull request|Merge branch" | \
+            sed 's/Merge pull request #\([0-9]*\) from .*/PR #\1/' | \
+            sed 's/Merge branch .*//' | \
+            grep -v "^$" > /tmp/changelog.txt || true
+
+          if [ -s /tmp/changelog.txt ]; then
+            CHANGELOG+=$(cat /tmp/changelog.txt)
           else
-            VERSION="dev-$(git rev-parse --short HEAD)"
+            # If no PRs, list individual commits
+            git log $LATEST_TAG..HEAD --pretty=format:"- %s (%h)" --no-merges >> /tmp/changelog.txt
+            CHANGELOG+=$(cat /tmp/changelog.txt)
           fi
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "Building version: $VERSION"
+
+          # Save to file for later use
+          echo "$CHANGELOG" > /tmp/full_changelog.txt
+
+          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+          cat /tmp/full_changelog.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Build VPK using Docker
         run: |
@@ -39,6 +120,8 @@ jobs:
       - name: Find and rename VPK
         id: find_vpk
         run: |
+          NEW_TAG="${{ steps.new_version.outputs.NEW_TAG }}"
+
           # Our build system creates VPK in ./build/
           VPK_FILE=$(find build -name "*.vpk" -type f | head -1)
           if [ -z "$VPK_FILE" ]; then
@@ -47,47 +130,59 @@ jobs:
           fi
 
           # Create release name
-          RELEASE_NAME="VitakiFork-v${{ steps.get_version.outputs.VERSION }}.vpk"
+          RELEASE_NAME="VitakiFork-${NEW_TAG}.vpk"
           cp "$VPK_FILE" "$RELEASE_NAME"
 
           echo "VPK_PATH=$RELEASE_NAME" >> $GITHUB_OUTPUT
           echo "VPK_NAME=$RELEASE_NAME" >> $GITHUB_OUTPUT
 
           # Show file info
+          echo "Created VPK:"
           ls -lh "$RELEASE_NAME"
+
+      - name: Create and push tag
+        run: |
+          NEW_TAG="${{ steps.new_version.outputs.NEW_TAG }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$NEW_TAG" -m "Release $NEW_TAG"
+          git push origin "$NEW_TAG"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: vitaki-fork-vpk
+          name: vitaki-fork-vpk-${{ steps.new_version.outputs.NEW_TAG }}
           path: ${{ steps.find_vpk.outputs.VPK_PATH }}
           retention-days: 90
 
-      - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.new_version.outputs.NEW_TAG }}
+          name: VitakiFork ${{ steps.new_version.outputs.NEW_TAG }}
           files: ${{ steps.find_vpk.outputs.VPK_PATH }}
           body: |
-            ## VitakiFork - Release v${{ steps.get_version.outputs.VERSION }}
+            # VitakiFork ${{ steps.new_version.outputs.NEW_TAG }}
 
             **Enhanced PlayStation 5 Remote Play for PS Vita**
 
             Built with modern UI, optimized performance, and quality-of-life improvements.
 
-            ### 📦 Installation
+            ## 📦 Installation
+
             1. Download `${{ steps.find_vpk.outputs.VPK_NAME }}` below
             2. Transfer to your PS Vita (via USB or FTP)
             3. Install using VitaShell (press X on the VPK file)
             4. Launch from LiveArea
 
-            ### 📝 What's New
-            See the [commit history](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }}) for detailed changes.
+            ${{ steps.changelog.outputs.CHANGELOG }}
 
-            ### 🛠️ Build Information
+            ## 🛠️ Build Information
+
             - **Build System:** Docker + VitaSDK
-            - **Version:** v${{ steps.get_version.outputs.VERSION }}
+            - **Version:** ${{ steps.new_version.outputs.NEW_TAG }}
             - **Commit:** ${{ github.sha }}
+            - **Build Date:** ${{ github.event.head_commit.timestamp }}
 
             ---
 

@@ -113,23 +113,32 @@ make
 
 **Note:** The modern build system (Docker) is recommended as it handles all dependencies automatically.
 
-### Automated Releases
+### Creating Releases
 
-This project uses GitHub Actions to automatically build and release VPK files when tags are pushed:
+This project uses a GitHub Actions workflow to create releases. **Releases can only be created from the `main` branch.**
 
-```bash
-# Create and push a release tag
-git tag v1.0.0
-git push origin v1.0.0
-```
+**To create a new release:**
 
-The workflow will:
-1. Build the VPK using Docker
-2. Create a GitHub release with the VPK attached
-3. Include installation instructions and build information
-4. Archive the build artifact for 90 days
+1. Go to the **Actions** tab on GitHub
+2. Select **"Create Release"** workflow
+3. Click **"Run workflow"**
+4. Choose the version bump type:
+   - **patch** (0.0.X) - Bug fixes, small changes
+   - **minor** (0.X.0) - New features, non-breaking changes
+   - **major** (X.0.0) - Breaking changes, major updates
+5. Click **"Run workflow"**
 
-You can also trigger builds manually from the Actions tab on GitHub.
+**The workflow will automatically:**
+- Calculate the new version number from the latest tag
+- Build the VPK using Docker
+- Generate a changelog from merged PRs and commits
+- Create and push a git tag
+- Create a GitHub release with the VPK attached
+- Include installation instructions and changelog
+
+**Example:** If the latest tag is `v1.2.3` and you select `minor`, the new version will be `v1.3.0`.
+
+**Note:** The `main` branch should be protected to ensure releases are created only through approved PRs.
 
 ## Instructions
 ### Local connection
