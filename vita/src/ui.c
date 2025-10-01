@@ -50,7 +50,7 @@
 #define FONT_SIZE_HEADER 24      // Screen titles, main headers
 #define FONT_SIZE_SUBHEADER 18   // Section titles, tab labels
 #define FONT_SIZE_BODY 16        // Primary content text
-#define FONT_SIZE_SMALL 14       // Secondary text, hints (MINIMUM)
+#define FONT_SIZE_SMALL 16       // Secondary text, hints (MINIMUM - 16pt)
 
 // VitaRPS5 UI Layout Constants
 #define WAVE_NAV_WIDTH 130
@@ -1951,21 +1951,32 @@ bool draw_profile_screen() {
 }
 
 // ============================================================================
-// PHASE 2: CONTROLLER CONFIGURATION SCREEN
+// PHASE 2: CONTROLLER CONFIGURATION SCREEN (REDESIGNED WITH TABS)
 // ============================================================================
 
 typedef enum {
-  CONTROLLER_SECTION_TABLE = 0,
-  CONTROLLER_SECTION_DIAGRAM = 1,
-  CONTROLLER_SECTION_COUNT = 2
-} ControllerSection;
+  CONTROLLER_TAB_MAPPINGS = 0,
+  CONTROLLER_TAB_SETTINGS = 1,
+  CONTROLLER_TAB_COUNT = 2
+} ControllerTab;
 
 typedef struct {
-  ControllerSection current_section;
-  int selected_row;
+  ControllerTab current_tab;
+  int selected_item;
 } ControllerState;
 
 static ControllerState controller_state = {0};
+
+// Tab colors (Purple for both tabs - controller theme)
+static uint32_t controller_tab_colors[CONTROLLER_TAB_COUNT] = {
+  RGBA8(0x7C, 0x3A, 0xED, 255), // Purple - Mappings
+  RGBA8(0x9C, 0x27, 0xB0, 255), // Accent Purple - Settings
+};
+
+static const char* controller_tab_names[CONTROLLER_TAB_COUNT] = {
+  "Button Mappings",
+  "Controller Settings"
+};
 
 // Button mapping data structure
 typedef struct {
@@ -1973,228 +1984,333 @@ typedef struct {
   const char* ps5_button;
 } ButtonMapping;
 
-/// Get button mappings based on controller map ID
-static void get_button_mappings(int map_id, ButtonMapping* mappings, int* count) {
-  // All maps have the same basic mappings, but can be customized
-  // For now, showing standard PS5 layout
-  static ButtonMapping standard_mappings[] = {
-    {"Cross", "Cross"},
-    {"Circle", "Circle"},
-    {"Square", "Square"},
-    {"Triangle", "Triangle"},
-    {"L1", "L1"},
-    {"R1", "R1"},
-    {"L2", "L2"},
-    {"R2", "R2"},
-    {"L3", "L3"},
-    {"R3", "R3"},
-    {"D-Pad Up", "D-Pad Up"},
-    {"D-Pad Down", "D-Pad Down"},
-    {"D-Pad Left", "D-Pad Left"},
-    {"D-Pad Right", "D-Pad Right"},
-    {"Start", "Options"},
-    {"Select", "Share"}
-  };
-
-  *count = sizeof(standard_mappings) / sizeof(ButtonMapping);
-  for (int i = 0; i < *count; i++) {
-    mappings[i] = standard_mappings[i];
+/// Get scheme name from controller map ID
+static const char* get_scheme_name(int map_id) {
+  if (map_id >= 0 && map_id <= 7) {
+    return "Official Layout";
+  } else if (map_id == 25) {
+    return "No Touchpad";
+  } else if (map_id == 99) {
+    return "Vitaki Custom";
+  } else if (map_id >= 100) {
+    return "L2/L3 R2/R3 Swap";
   }
-
-  // TODO(PHASE2-STUB): Different mappings based on map_id
-  // Map ID 0-7: Official layouts
-  // Map ID 25: No touchpad
-  // Map ID 99: Custom vitaki layout
-  // Map ID +100: Swap L2/L3, R2/R3
+  return "Unknown";
 }
 
-/// Draw button mapping table (left side)
-static void draw_button_mapping_table(int x, int y, int width, int height, bool selected) {
-  // Card background
-  draw_card_with_shadow(x, y, width, height, 12, UI_COLOR_CARD_BG);
+/// Get button mappings based on controller map ID (dynamically generated from controller.c logic)
+static void get_button_mappings(int map_id, ButtonMapping* mappings, int* count) {
+  int idx = 0;
 
-  // Selection border
-  if (selected) {
-    vita2d_draw_rectangle(x - 2, y - 2, width + 4, 3, UI_COLOR_PRIMARY_BLUE);
-    vita2d_draw_rectangle(x - 2, y + height - 1, width + 4, 3, UI_COLOR_PRIMARY_BLUE);
-    vita2d_draw_rectangle(x - 2, y - 2, 3, height + 4, UI_COLOR_PRIMARY_BLUE);
-    vita2d_draw_rectangle(x + width - 1, y - 2, 3, height + 4, UI_COLOR_PRIMARY_BLUE);
+  // Common mappings for ALL schemes
+  mappings[idx++] = (ButtonMapping){"D-Pad", "D-Pad"};
+  mappings[idx++] = (ButtonMapping){"Face Buttons", "Face Buttons"};
+  mappings[idx++] = (ButtonMapping){"L1", "L1"};
+  mappings[idx++] = (ButtonMapping){"R1", "R1"};
+  mappings[idx++] = (ButtonMapping){"Select+Start", "PS Button"};
+
+  // Map-specific L2/R2/L3/R3/Touchpad assignments
+  if (map_id == 99) {
+    // Map 99: Vitaki Custom (rear touch L2/R2, physical buttons L3/R3)
+    mappings[idx++] = (ButtonMapping){"Rear L (near L1)", "L2"};
+    mappings[idx++] = (ButtonMapping){"Rear R (near R1)", "R2"};
+    mappings[idx++] = (ButtonMapping){"Left + Square", "L3"};
+    mappings[idx++] = (ButtonMapping){"Right + Circle", "R3"};
+    mappings[idx++] = (ButtonMapping){"Front Touch", "Touchpad"};
+  } else if (map_id == 1 || map_id == 101) {
+    // Map 1/101: Front touch arcs for all triggers
+    mappings[idx++] = (ButtonMapping){"Front Upper-Left", "L2"};
+    mappings[idx++] = (ButtonMapping){"Front Upper-Right", "R2"};
+    mappings[idx++] = (ButtonMapping){"Front Lower-Left", "L3"};
+    mappings[idx++] = (ButtonMapping){"Front Lower-Right", "R3"};
+    mappings[idx++] = (ButtonMapping){"Front Center", "Touchpad"};
+  } else if (map_id == 2 || map_id == 102) {
+    // Map 2/102: Rear touch left/right for L3/R3, front arcs for L2/R2
+    mappings[idx++] = (ButtonMapping){"Front Lower-Left", "L2"};
+    mappings[idx++] = (ButtonMapping){"Front Lower-Right", "R2"};
+    mappings[idx++] = (ButtonMapping){"Rear Left", "L3"};
+    mappings[idx++] = (ButtonMapping){"Rear Right", "R3"};
+    mappings[idx++] = (ButtonMapping){"Front Center", "Touchpad"};
+  } else if (map_id == 3 || map_id == 103) {
+    // Map 3/103: Rear touch for L3/R3, front upper arcs for L2/R2
+    mappings[idx++] = (ButtonMapping){"Front Upper-Left", "L2"};
+    mappings[idx++] = (ButtonMapping){"Front Upper-Right", "R2"};
+    mappings[idx++] = (ButtonMapping){"Rear Left", "L3"};
+    mappings[idx++] = (ButtonMapping){"Rear Right", "R3"};
+    mappings[idx++] = (ButtonMapping){"Front Center", "Touchpad"};
+  } else if (map_id == 4 || map_id == 104) {
+    // Map 4/104: Touchpad only, no L2/R2/L3/R3
+    mappings[idx++] = (ButtonMapping){"Front Touch", "Touchpad"};
+    mappings[idx++] = (ButtonMapping){"L2/R2/L3/R3", "Not Mapped"};
+  } else if (map_id == 5 || map_id == 105) {
+    // Map 5/105: No triggers or touchpad at all
+    mappings[idx++] = (ButtonMapping){"All Extras", "Not Mapped"};
+  } else if (map_id == 6 || map_id == 106) {
+    // Map 6/106: No L3/R3, front arcs for L2/R2
+    mappings[idx++] = (ButtonMapping){"Front Lower-Left", "L2"};
+    mappings[idx++] = (ButtonMapping){"Front Lower-Right", "R2"};
+    mappings[idx++] = (ButtonMapping){"L3/R3", "Not Mapped"};
+    mappings[idx++] = (ButtonMapping){"Front Center", "Touchpad"};
+  } else if (map_id == 7 || map_id == 107) {
+    // Map 7/107: No L3/R3, front upper arcs for L2/R2
+    mappings[idx++] = (ButtonMapping){"Front Upper-Left", "L2"};
+    mappings[idx++] = (ButtonMapping){"Front Upper-Right", "R2"};
+    mappings[idx++] = (ButtonMapping){"L3/R3", "Not Mapped"};
+    mappings[idx++] = (ButtonMapping){"Front Center", "Touchpad"};
+  } else if (map_id == 25 || map_id == 125) {
+    // Map 25/125: No touchpad, front arcs for all triggers
+    mappings[idx++] = (ButtonMapping){"Front Upper-Left", "L2"};
+    mappings[idx++] = (ButtonMapping){"Front Upper-Right", "R2"};
+    mappings[idx++] = (ButtonMapping){"Front Lower-Left", "L3"};
+    mappings[idx++] = (ButtonMapping){"Front Lower-Right", "R3"};
+    mappings[idx++] = (ButtonMapping){"Touchpad", "Not Mapped"};
+  } else if (map_id == 100) {
+    // Map 100: Rear touch quadrants
+    mappings[idx++] = (ButtonMapping){"Rear Lower-Left", "L2"};
+    mappings[idx++] = (ButtonMapping){"Rear Lower-Right", "R2"};
+    mappings[idx++] = (ButtonMapping){"Rear Upper-Left", "L3"};
+    mappings[idx++] = (ButtonMapping){"Rear Upper-Right", "R3"};
+    mappings[idx++] = (ButtonMapping){"Front Touch", "Touchpad"};
+  } else {
+    // Map 0 (default): Front touch arcs (same as map 1)
+    mappings[idx++] = (ButtonMapping){"Front Upper-Left", "L2"};
+    mappings[idx++] = (ButtonMapping){"Front Upper-Right", "R2"};
+    mappings[idx++] = (ButtonMapping){"Front Lower-Left", "L3"};
+    mappings[idx++] = (ButtonMapping){"Front Lower-Right", "R3"};
+    mappings[idx++] = (ButtonMapping){"Front Center", "Touchpad"};
   }
 
-  // Title
-  vita2d_font_draw_text(font, x + 20, y + 40, UI_COLOR_TEXT_PRIMARY, 20, "Button Mappings");
+  *count = idx;
+}
+
+/// Draw Mappings Tab content (scheme selector + button table + vita diagram)
+static void draw_controller_mappings_tab(int content_x, int content_y, int content_w) {
+  // Scheme selector at top with Left/Right arrows
+  int selector_y = content_y;
+  int selector_h = 50;
+
+  // Draw scheme selector card
+  draw_card_with_shadow(content_x, selector_y, content_w, selector_h, 8, UI_COLOR_CARD_BG);
+
+  // Left arrow
+  vita2d_font_draw_text(font, content_x + 30, selector_y + selector_h/2 + 8,
+                        UI_COLOR_PRIMARY_BLUE, FONT_SIZE_HEADER, "<");
+
+  // Scheme text (centered)
+  char scheme_text[64];
+  snprintf(scheme_text, sizeof(scheme_text), "Scheme %d: %s",
+           context.config.controller_map_id, get_scheme_name(context.config.controller_map_id));
+  int text_w = vita2d_font_text_width(font, FONT_SIZE_SUBHEADER, scheme_text);
+  vita2d_font_draw_text(font, content_x + (content_w - text_w)/2, selector_y + selector_h/2 + 6,
+                        UI_COLOR_TEXT_PRIMARY, FONT_SIZE_SUBHEADER, scheme_text);
+
+  // Right arrow
+  vita2d_font_draw_text(font, content_x + content_w - 50, selector_y + selector_h/2 + 8,
+                        UI_COLOR_PRIMARY_BLUE, FONT_SIZE_HEADER, ">");
+
+  // Hint below selector
+  const char* hint = "Press Left/Right to cycle schemes";
+  int hint_w = vita2d_font_text_width(font, FONT_SIZE_SMALL, hint);
+  vita2d_font_draw_text(font, content_x + (content_w - hint_w)/2, selector_y + selector_h + 18,
+                        UI_COLOR_TEXT_TERTIARY, FONT_SIZE_SMALL, hint);
+
+  // Layout for mapping table and diagram (side by side)
+  int panel_y = selector_y + selector_h + 35;
+  int panel_h = 300;
+  int panel_spacing = 20;
+  int panel_w = (content_w - panel_spacing) / 2;
+
+  // Button mapping table (left panel)
+  int table_x = content_x;
+  draw_card_with_shadow(table_x, panel_y, panel_w, panel_h, 8, UI_COLOR_CARD_BG);
+
+  vita2d_font_draw_text(font, table_x + 15, panel_y + 30,
+                        UI_COLOR_TEXT_PRIMARY, FONT_SIZE_SUBHEADER, "Button Mappings");
 
   // Table headers
-  int table_x = x + 20;
-  int table_y = y + 70;
-  int col_width = (width - 40) / 2;
+  int row_y = panel_y + 55;
+  int col1_x = table_x + 15;
+  int col2_x = table_x + panel_w/2 + 10;
 
-  vita2d_font_draw_text(font, table_x, table_y, UI_COLOR_TEXT_SECONDARY, 14, "PS Vita Control");
-  vita2d_font_draw_text(font, table_x + col_width, table_y, UI_COLOR_TEXT_SECONDARY, 14, "PS5 Button");
+  vita2d_font_draw_text(font, col1_x, row_y, UI_COLOR_TEXT_SECONDARY, FONT_SIZE_SMALL, "Vita");
+  vita2d_font_draw_text(font, col2_x, row_y, UI_COLOR_TEXT_SECONDARY, FONT_SIZE_SMALL, "PS5");
+  row_y += 25;
 
-  // Divider line
-  table_y += 30;
-  vita2d_draw_rectangle(table_x, table_y, width - 40, 2, UI_COLOR_TEXT_SECONDARY);
-  table_y += 10;
-
-  // Get button mappings
+  // Get mappings
   ButtonMapping mappings[20];
   int mapping_count = 0;
   get_button_mappings(context.config.controller_map_id, mappings, &mapping_count);
 
-  // Draw mappings
-  int row_height = 22;
-  for (int i = 0; i < mapping_count && i < 10; i++) { // Show first 10 for space
-    uint32_t text_color = (selected && i == controller_state.selected_row) ?
-                          UI_COLOR_PRIMARY_BLUE : UI_COLOR_TEXT_PRIMARY;
-
-    vita2d_font_draw_text(font, table_x, table_y + (i * row_height), text_color, 14, mappings[i].vita_button);
-    vita2d_font_draw_text(font, table_x + col_width, table_y + (i * row_height), text_color, 14, mappings[i].ps5_button);
+  // Draw first 8 mappings
+  int row_spacing = 24;
+  for (int i = 0; i < mapping_count && i < 8; i++) {
+    vita2d_font_draw_text(font, col1_x, row_y + (i * row_spacing),
+                          UI_COLOR_TEXT_PRIMARY, FONT_SIZE_SMALL, mappings[i].vita_button);
+    vita2d_font_draw_text(font, col2_x, row_y + (i * row_spacing),
+                          UI_COLOR_TEXT_PRIMARY, FONT_SIZE_SMALL, mappings[i].ps5_button);
   }
 
-  // Map ID info at bottom
-  char map_info[64];
-  snprintf(map_info, sizeof(map_info), "Controller Map ID: %d", context.config.controller_map_id);
-  vita2d_font_draw_text(font, table_x, y + height - 40, UI_COLOR_TEXT_SECONDARY, 12, map_info);
+  // Vita diagram (right panel) - simplified
+  int diagram_x = content_x + panel_w + panel_spacing;
+  draw_card_with_shadow(diagram_x, panel_y, panel_w, panel_h, 8, UI_COLOR_CARD_BG);
+
+  vita2d_font_draw_text(font, diagram_x + 15, panel_y + 30,
+                        UI_COLOR_TEXT_PRIMARY, FONT_SIZE_SUBHEADER, "Vita Layout");
+
+  // Simple Vita representation (centered in card)
+  int vita_center_x = diagram_x + panel_w/2;
+  int vita_center_y = panel_y + panel_h/2 + 20;
+  int btn_size = 12;
+  uint32_t btn_color = UI_COLOR_PRIMARY_BLUE;
+
+  // D-Pad (left)
+  int dpad_x = vita_center_x - 60;
+  vita2d_draw_rectangle(dpad_x, vita_center_y - 15, btn_size, btn_size, btn_color);
+  vita2d_draw_rectangle(dpad_x, vita_center_y + 5, btn_size, btn_size, btn_color);
+  vita2d_draw_rectangle(dpad_x - 10, vita_center_y - 5, btn_size, btn_size, btn_color);
+  vita2d_draw_rectangle(dpad_x + 10, vita_center_y - 5, btn_size, btn_size, btn_color);
+
+  // Face buttons (right)
+  int face_x = vita_center_x + 50;
+  vita2d_draw_rectangle(face_x, vita_center_y - 15, btn_size, btn_size, btn_color);
+  vita2d_draw_rectangle(face_x, vita_center_y + 5, btn_size, btn_size, btn_color);
+  vita2d_draw_rectangle(face_x - 10, vita_center_y - 5, btn_size, btn_size, btn_color);
+  vita2d_draw_rectangle(face_x + 10, vita_center_y - 5, btn_size, btn_size, btn_color);
+
+  // Shoulders (top)
+  vita2d_draw_rectangle(vita_center_x - 80, vita_center_y - 50, 25, 8, btn_color);
+  vita2d_draw_rectangle(vita_center_x + 55, vita_center_y - 50, 25, 8, btn_color);
 }
 
-/// Draw simplified Vita controller diagram (right side)
-static void draw_vita_diagram(int x, int y, int width, int height, bool selected) {
-  // Card background
-  draw_card_with_shadow(x, y, width, height, 12, UI_COLOR_CARD_BG);
+/// Draw Settings Tab content (controller-related settings)
+static void draw_controller_settings_tab(int content_x, int content_y, int content_w) {
+  int item_h = 50;
+  int item_spacing = 10;
+  int y = content_y;
 
-  // Selection border
-  if (selected) {
-    vita2d_draw_rectangle(x - 2, y - 2, width + 4, 3, UI_COLOR_PRIMARY_BLUE);
-    vita2d_draw_rectangle(x - 2, y + height - 1, width + 4, 3, UI_COLOR_PRIMARY_BLUE);
-    vita2d_draw_rectangle(x - 2, y - 2, 3, height + 4, UI_COLOR_PRIMARY_BLUE);
-    vita2d_draw_rectangle(x + width - 1, y - 2, 3, height + 4, UI_COLOR_PRIMARY_BLUE);
-  }
+  // Circle Button Confirm toggle
+  draw_toggle_switch(content_x + content_w - 70, y + (item_h - 30)/2, 60, 30,
+                     context.config.circle_btn_confirm, controller_state.selected_item == 0);
+  vita2d_font_draw_text(font, content_x + 15, y + item_h/2 + 6,
+                        UI_COLOR_TEXT_PRIMARY, FONT_SIZE_BODY, "Circle Button Confirm");
+  y += item_h + item_spacing;
 
-  // Title
-  vita2d_font_draw_text(font, x + 20, y + 40, UI_COLOR_TEXT_PRIMARY, 20, "PS Vita Layout");
+  // TODO(PHASE2-STUB): Motion Controls - Not implemented
+  draw_toggle_switch(content_x + content_w - 70, y + (item_h - 30)/2, 60, 30,
+                     false, controller_state.selected_item == 1);
+  vita2d_font_draw_text(font, content_x + 15, y + item_h/2 + 6,
+                        UI_COLOR_TEXT_SECONDARY, FONT_SIZE_BODY, "Motion Controls (Stub)");
+  y += item_h + item_spacing;
 
-  // Draw simplified Vita outline (centered)
-  int diagram_x = x + width / 2;
-  int diagram_y = y + height / 2;
-
-  // Main body (horizontal rectangle)
-  int body_w = 260;
-  int body_h = 100;
-  vita2d_draw_rectangle(diagram_x - body_w / 2, diagram_y - body_h / 2,
-                        body_w, body_h, RGBA8(60, 60, 70, 255));
-
-  // Button positions (approximate)
-  uint32_t button_color = UI_COLOR_PRIMARY_BLUE;
-  int button_size = 12;
-
-  // Face buttons (right side)
-  int face_x = diagram_x + 80;
-  vita2d_draw_rectangle(face_x, diagram_y - 20, button_size, button_size, button_color); // Triangle
-  vita2d_draw_rectangle(face_x, diagram_y + 8, button_size, button_size, button_color); // Cross
-  vita2d_draw_rectangle(face_x - 14, diagram_y - 6, button_size, button_size, button_color); // Square
-  vita2d_draw_rectangle(face_x + 14, diagram_y - 6, button_size, button_size, button_color); // Circle
-
-  // D-Pad (left side)
-  int dpad_x = diagram_x - 80;
-  vita2d_draw_rectangle(dpad_x, diagram_y - 20, button_size, button_size, button_color); // Up
-  vita2d_draw_rectangle(dpad_x, diagram_y + 8, button_size, button_size, button_color); // Down
-  vita2d_draw_rectangle(dpad_x - 14, diagram_y - 6, button_size, button_size, button_color); // Left
-  vita2d_draw_rectangle(dpad_x + 14, diagram_y - 6, button_size, button_size, button_color); // Right
-
-  // Shoulder buttons (top)
-  vita2d_draw_rectangle(diagram_x - 100, diagram_y - 60, 30, 10, button_color); // L
-  vita2d_draw_rectangle(diagram_x + 70, diagram_y - 60, 30, 10, button_color); // R
-
-  // Labels
-  vita2d_font_draw_text(font, face_x - 5, diagram_y - 16, UI_COLOR_TEXT_PRIMARY, 10, "△");
-  vita2d_font_draw_text(font, face_x - 5, diagram_y + 12, UI_COLOR_TEXT_PRIMARY, 10, "✕");
-  vita2d_font_draw_text(font, face_x - 18, diagram_y - 2, UI_COLOR_TEXT_PRIMARY, 10, "□");
-  vita2d_font_draw_text(font, face_x + 10, diagram_y - 2, UI_COLOR_TEXT_PRIMARY, 10, "○");
-
-  vita2d_font_draw_text(font, diagram_x - 103, diagram_y - 56, UI_COLOR_TEXT_PRIMARY, 10, "L1");
-  vita2d_font_draw_text(font, diagram_x + 73, diagram_y - 56, UI_COLOR_TEXT_PRIMARY, 10, "R1");
-
-  // Info text
-  vita2d_font_draw_text(font, x + 20, y + height - 40, UI_COLOR_TEXT_SECONDARY, 12,
-                        "Select map ID to customize");
+  // TODO(PHASE2-STUB): Touchpad as Buttons - Not implemented
+  draw_toggle_switch(content_x + content_w - 70, y + (item_h - 30)/2, 60, 30,
+                     false, controller_state.selected_item == 2);
+  vita2d_font_draw_text(font, content_x + 15, y + item_h/2 + 6,
+                        UI_COLOR_TEXT_SECONDARY, FONT_SIZE_BODY, "Touchpad as Buttons (Stub)");
 }
 
-/// Main Controller Configuration screen
+/// Main Controller Configuration screen with tabs
 bool draw_controller_config_screen() {
-  // Clear screen with background color
-  vita2d_start_drawing();
-  vita2d_clear_screen();
-  vita2d_draw_rectangle(0, 0, VITA_WIDTH, VITA_HEIGHT, UI_COLOR_BACKGROUND);
+  // Render particle background and wave navigation
+  update_particles();
+  render_particles();
+  render_wave_navigation();
 
-  // Screen title
-  vita2d_font_draw_text(font, 150, 60, UI_COLOR_TEXT_PRIMARY, 28, "Controller Configuration");
+  // Main content area (avoiding wave nav sidebar)
+  int content_x = WAVE_NAV_WIDTH + 40;
+  int content_y = 100;
+  int content_w = VITA_WIDTH - WAVE_NAV_WIDTH - 80;
 
-  // Layout: Two panels side by side
-  int panel_spacing = 20;
-  int panel_y = 100;
-  int panel_h = 400;
-  int panel_w = (960 - 150 - panel_spacing) / 2 - 20;
+  // Controller title
+  vita2d_font_draw_text(font, content_x, 50, UI_COLOR_TEXT_PRIMARY, FONT_SIZE_HEADER, "Controller Configuration");
 
-  int left_panel_x = 150;
-  int right_panel_x = left_panel_x + panel_w + panel_spacing;
+  // Tab bar
+  int tab_bar_y = 70;
+  int tab_bar_h = 40;
+  draw_tab_bar(content_x, tab_bar_y, content_w, tab_bar_h,
+               controller_tab_names, controller_tab_colors,
+               CONTROLLER_TAB_COUNT, controller_state.current_tab);
 
-  // Draw button mapping table (left)
-  draw_button_mapping_table(left_panel_x, panel_y, panel_w, panel_h,
-                             controller_state.current_section == CONTROLLER_SECTION_TABLE);
+  // Tab content area
+  int tab_content_y = tab_bar_y + tab_bar_h + 20;
+  int tab_content_w = content_w - 40;
+  int tab_content_x = content_x + 20;
 
-  // Draw Vita diagram (right)
-  draw_vita_diagram(right_panel_x, panel_y, panel_w, panel_h,
-                    controller_state.current_section == CONTROLLER_SECTION_DIAGRAM);
+  // Draw current tab content
+  switch (controller_state.current_tab) {
+    case CONTROLLER_TAB_MAPPINGS:
+      draw_controller_mappings_tab(tab_content_x, tab_content_y, tab_content_w);
+      break;
+    case CONTROLLER_TAB_SETTINGS:
+      draw_controller_settings_tab(tab_content_x, tab_content_y, tab_content_w);
+      break;
+  }
 
   // Control hints at bottom
-  const char* hints = "Left/Right: Switch panels  |  X: Select Map ID  |  Circle: Back";
-  int hints_w = vita2d_font_text_width(font, 14, hints);
-  vita2d_font_draw_text(font, (960 - hints_w) / 2, 520, UI_COLOR_TEXT_SECONDARY, 14, hints);
+  int hint_y = VITA_HEIGHT - 25;
+  int hint_x = WAVE_NAV_WIDTH + 20;
+  const char* hints = (controller_state.current_tab == CONTROLLER_TAB_MAPPINGS) ?
+    "L1/R1: Switch Tab | Left/Right: Change Scheme | Circle: Back" :
+    "L1/R1: Switch Tab | Up/Down: Navigate | X: Toggle | Circle: Back";
+  vita2d_font_draw_text(font, hint_x, hint_y, UI_COLOR_TEXT_TERTIARY, FONT_SIZE_SMALL, hints);
 
-  vita2d_end_drawing();
-  vita2d_common_dialog_update();
-  vita2d_swap_buffers();
+  // === INPUT HANDLING ===
 
-  // Navigation
-  SceCtrlData pad;
-  sceCtrlPeekBufferPositive(0, &pad, 1);
-
-  // Left/Right: Switch sections
-  if (btn_pressed(SCE_CTRL_LEFT)) {
-    controller_state.current_section = CONTROLLER_SECTION_TABLE;
-  }
-  if (btn_pressed(SCE_CTRL_RIGHT)) {
-    controller_state.current_section = CONTROLLER_SECTION_DIAGRAM;
+  // L1/R1: Switch tabs
+  if (btn_pressed(SCE_CTRL_LTRIGGER)) {
+    controller_state.current_tab = (controller_state.current_tab - 1 + CONTROLLER_TAB_COUNT) % CONTROLLER_TAB_COUNT;
+    controller_state.selected_item = 0;
+  } else if (btn_pressed(SCE_CTRL_RTRIGGER)) {
+    controller_state.current_tab = (controller_state.current_tab + 1) % CONTROLLER_TAB_COUNT;
+    controller_state.selected_item = 0;
   }
 
-  // Up/Down: Navigate rows in table (if table is selected)
-  if (controller_state.current_section == CONTROLLER_SECTION_TABLE) {
+  // Tab-specific navigation
+  if (controller_state.current_tab == CONTROLLER_TAB_MAPPINGS) {
+    // Left/Right: Cycle through schemes
+    if (btn_pressed(SCE_CTRL_LEFT)) {
+      int current_id = context.config.controller_map_id;
+      if (current_id == 0) {
+        context.config.controller_map_id = 99;
+      } else if (current_id == 25) {
+        context.config.controller_map_id = 7;
+      } else if (current_id == 99) {
+        context.config.controller_map_id = 25;
+      } else if (current_id > 0 && current_id <= 7) {
+        context.config.controller_map_id = current_id - 1;
+      }
+      config_serialize(&context.config);
+    } else if (btn_pressed(SCE_CTRL_RIGHT)) {
+      int current_id = context.config.controller_map_id;
+      if (current_id < 7) {
+        context.config.controller_map_id = current_id + 1;
+      } else if (current_id == 7) {
+        context.config.controller_map_id = 25;
+      } else if (current_id == 25) {
+        context.config.controller_map_id = 99;
+      } else {
+        context.config.controller_map_id = 0;
+      }
+      config_serialize(&context.config);
+    }
+  } else if (controller_state.current_tab == CONTROLLER_TAB_SETTINGS) {
+    // Up/Down: Navigate items
+    int max_items = 3;
     if (btn_pressed(SCE_CTRL_UP)) {
-      controller_state.selected_row = (controller_state.selected_row > 0) ?
-                                       controller_state.selected_row - 1 : 0;
+      controller_state.selected_item = (controller_state.selected_item - 1 + max_items) % max_items;
+    } else if (btn_pressed(SCE_CTRL_DOWN)) {
+      controller_state.selected_item = (controller_state.selected_item + 1) % max_items;
     }
-    if (btn_pressed(SCE_CTRL_DOWN)) {
-      controller_state.selected_row = (controller_state.selected_row < 9) ?
-                                       controller_state.selected_row + 1 : 9;
-    }
-  }
 
-  // X: Open map ID selection (stub for now)
-  if (btn_pressed(SCE_CTRL_CROSS)) {
-    // TODO(PHASE2-STUB): Map ID selection - Need dropdown for map selection
-    // For now, just cycle through some common values
-    int current_id = context.config.controller_map_id;
-    if (current_id < 7) {
-      context.config.controller_map_id = current_id + 1;
-    } else if (current_id == 7) {
-      context.config.controller_map_id = 25;
-    } else if (current_id == 25) {
-      context.config.controller_map_id = 99;
-    } else {
-      context.config.controller_map_id = 0;
+    // X: Toggle selected item
+    if (btn_pressed(SCE_CTRL_CROSS)) {
+      if (controller_state.selected_item == 0) {
+        // Circle button confirm toggle
+        context.config.circle_btn_confirm = !context.config.circle_btn_confirm;
+        config_serialize(&context.config);
+      }
+      // Items 1 and 2 are stubs - do nothing
     }
-    config_serialize(&context.config);
   }
 
   // Circle: Back to main menu
