@@ -2840,9 +2840,9 @@ void draw_ui() {
   load_psn_id_if_needed();
 
   while (true) {
-    // if (!context.stream.is_streaming) {
-      // sceKernelDelayThread(1000 * 10);
-      // Get current controller state
+    // Skip UI controller input when streaming - input thread handles it
+    if (!context.stream.is_streaming) {
+      // Get current controller state (destructive read - consumes buffer)
       if (!sceCtrlReadBufferPositive(0, &ctrl, 1)) {
         // Try again...
         LOGE("Failed to get controller state");
@@ -2854,6 +2854,15 @@ void draw_ui() {
       // Get current touch state
       sceTouchPeek(SCE_TOUCH_PORT_FRONT, &(context.ui_state.touch_state_front),
                   1);
+    } else {
+      // During streaming: only peek at Circle button for exit (non-destructive)
+      SceCtrlData stream_ctrl;
+      if (sceCtrlPeekBufferPositive(0, &stream_ctrl, 1)) {
+        // Update button state for Circle button detection in draw_stream()
+        context.ui_state.old_button_state = context.ui_state.button_state;
+        context.ui_state.button_state = stream_ctrl.buttons;
+      }
+    }
 
 
       // handle invalid items
