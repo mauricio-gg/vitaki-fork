@@ -9,7 +9,7 @@ cmake-build-*
 /Debug
 /release
 /Release
-.DS_store
+.DS_Store
 *.AppImage
 appdir
 /ffmpeg*
@@ -37,3 +37,28 @@ chiaki.conf
 /*.dmg
 *.vscode
 site/
+
+# Hidden directories and IDE files
+.claude/
+.vscode/
+.idea/
+.git/
+
+# Build artifacts
+*.vpk
+*.elf
+*.self
+*.velf
+vita/build/
+
+# Local config and runtime files
+*.json
+!package.json
+!tsconfig.json
+settings.cfg
+consoles.json
+profile.json
+
+# Documentation artifacts
+docs/*.md
+!docs/ai/*.md
