@@ -754,13 +754,15 @@ void draw_play_icon(int center_x, int center_y, int size) {
   uint32_t white = RGBA8(255, 255, 255, 255);
   int half_size = size / 2;
 
+  // Triangle centroid is at 1/3 from left edge for proper visual centering
+  // Offset the triangle left by size/6 to center it visually
+  int offset = size / 6;
+
   // Draw filled triangle using horizontal lines
-  // Triangle points: left (center_x - half_size, center_y),
-  //                  top-right (center_x + half_size, center_y - half_size)
-  //                  bottom-right (center_x + half_size, center_y + half_size)
+  // Triangle points adjusted for visual centering
   for (int y = -half_size; y <= half_size; y++) {
-    int x_start = center_x - half_size + abs(y);  // Left edge moves right as we go away from center
-    int x_end = center_x + half_size;              // Right edge is fixed
+    int x_start = center_x - half_size + abs(y) - offset;  // Left edge moves right as we go away from center
+    int x_end = center_x + half_size - offset;              // Right edge is fixed
     int width = x_end - x_start;
     if (width > 0) {
       vita2d_draw_rectangle(x_start, center_y + y, width, 1, white);
