@@ -1,12 +1,13 @@
-name: Build and Release
+name: Build and Release VPK
 
 on:
   push:
     tags:
-      - 'v*.*.*'  # Triggers on version tags like v0.1.104
+      - 'v*.*.*'  # Triggers on version tags like v1.0.0
+  workflow_dispatch:  # Allow manual trigger
 
 jobs:
-  build:
+  build-vpk:
     runs-on: ubuntu-latest
 
     steps:
@@ -14,46 +15,85 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-depth: 0  # Full history for proper versioning
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build VPK
+      - name: Get version
+        id: get_version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION="dev-$(git rev-parse --short HEAD)"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Build VPK using Docker
         run: |
           chmod +x tools/build.sh
           ./tools/build.sh
 
-      - name: Get version from tag
-        id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Find VPK file
+      - name: Find and rename VPK
         id: find_vpk
         run: |
-          VPK_FILE=$(find vita/build -name "*.vpk" -type f | head -1)
-          echo "VPK_PATH=$VPK_FILE" >> $GITHUB_OUTPUT
-          echo "VPK_NAME=$(basename $VPK_FILE)" >> $GITHUB_OUTPUT
+          # Our build system creates VPK in ./build/
+          VPK_FILE=$(find build -name "*.vpk" -type f | head -1)
+          if [ -z "$VPK_FILE" ]; then
+            echo "Error: No VPK file found!"
+            exit 1
+          fi
+
+          # Create release name
+          RELEASE_NAME="VitakiFork-v${{ steps.get_version.outputs.VERSION }}.vpk"
+          cp "$VPK_FILE" "$RELEASE_NAME"
+
+          echo "VPK_PATH=$RELEASE_NAME" >> $GITHUB_OUTPUT
+          echo "VPK_NAME=$RELEASE_NAME" >> $GITHUB_OUTPUT
+
+          # Show file info
+          ls -lh "$RELEASE_NAME"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: vitaki-fork-vpk
+          path: ${{ steps.find_vpk.outputs.VPK_PATH }}
+          retention-days: 90
 
       - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
           files: ${{ steps.find_vpk.outputs.VPK_PATH }}
           body: |
-            ## VitaRPS5 (Vitaki Fork) - Release ${{ steps.get_version.outputs.VERSION }}
+            ## VitakiFork - Release v${{ steps.get_version.outputs.VERSION }}
 
-            ### Installation
-            1. Download the VPK file below
-            2. Transfer to your PS Vita
-            3. Install using VitaShell
+            **Enhanced PlayStation 5 Remote Play for PS Vita**
 
-            ### What's New
-            See the [commit history](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }}) for details.
+            Built with modern UI, optimized performance, and quality-of-life improvements.
+
+            ### 📦 Installation
+            1. Download `${{ steps.find_vpk.outputs.VPK_NAME }}` below
+            2. Transfer to your PS Vita (via USB or FTP)
+            3. Install using VitaShell (press X on the VPK file)
+            4. Launch from LiveArea
+
+            ### 📝 What's New
+            See the [commit history](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }}) for detailed changes.
+
+            ### 🛠️ Build Information
+            - **Build System:** Docker + VitaSDK
+            - **Version:** v${{ steps.get_version.outputs.VERSION }}
+            - **Commit:** ${{ github.sha }}
 
             ---
 
-            Built with ❤️ for the PS Vita community
+            Built with ❤️ for the PS Vita community over 3+ months of design and development.
 
-            ☕ Support development: [Buy Me a Coffee](https://buymeacoffee.com/solidem)
+            ☕ **Support development:** [Buy Me a Coffee](https://buymeacoffee.com/solidem)
           draft: false
           prerelease: false
         env:
