@@ -9,6 +9,7 @@
 #include <psp2/message_dialog.h>
 #include <psp2/registrymgr.h>
 #include <psp2/ime_dialog.h>
+#include <psp2/kernel/processmgr.h>
 #include <chiaki/base64.h>
 
 #include "context.h"
@@ -37,11 +38,11 @@
 #define UI_COLOR_ACCENT_PURPLE 0xFFB0279C       // Accent Purple #9C27B0
 #define UI_COLOR_SHADOW 0x3C000000           // Semi-transparent black for shadows
 
-// Particle colors (ABGR with alpha for transparency)
-#define PARTICLE_COLOR_RED    0x80FF5555  // Semi-transparent red
-#define PARTICLE_COLOR_GREEN  0x8055FF55  // Semi-transparent green
-#define PARTICLE_COLOR_BLUE   0x805555FF  // Semi-transparent blue
-#define PARTICLE_COLOR_ORANGE 0x8055AAFF  // Semi-transparent orange
+// Particle colors (ABGR with alpha for transparency - 80% opacity = 0xCC)
+#define PARTICLE_COLOR_RED    0xCCFF5555  // 80% transparent red
+#define PARTICLE_COLOR_GREEN  0xCC55FF55  // 80% transparent green
+#define PARTICLE_COLOR_BLUE   0xCC5555FF  // 80% transparent blue
+#define PARTICLE_COLOR_ORANGE 0xCC55AAFF  // 80% transparent orange
 
 #define VITA_WIDTH 960
 #define VITA_HEIGHT 544
@@ -112,7 +113,7 @@ static bool particles_initialized = false;
 #define WAVE_NAV_ICON_SIZE 48
 #define WAVE_NAV_ICON_X 41
 #define WAVE_NAV_ICON_START_Y 180
-#define WAVE_NAV_ICON_SPACING 60
+#define WAVE_NAV_ICON_SPACING 80  // Increased from 60 for better separation
 
 static int selected_nav_icon = 0;  // 0=Play, 1=Settings, 2=Controller, 3=Profile
 static float wave_animation_time = 0.0f;
@@ -134,6 +135,16 @@ typedef struct {
 } ConsoleCardInfo;
 
 static int selected_console_index = 0;
+
+// Console card cache to prevent flickering during discovery updates
+typedef struct {
+  ConsoleCardInfo cards[MAX_NUM_HOSTS];
+  int num_cards;
+  uint64_t last_update_time;  // Microseconds since epoch
+} ConsoleCardCache;
+
+static ConsoleCardCache card_cache = {0};
+#define CARD_CACHE_UPDATE_INTERVAL_US (10 * 1000000)  // 10 seconds in microseconds
 
 // PIN entry state for VitaRPS5-style registration
 typedef struct {
@@ -413,9 +424,9 @@ void init_particles() {
     particles[i].y = -(float)(rand() % 200);  // Start above screen (0 to -200)
     particles[i].vx = ((float)(rand() % 100) / 100.0f - 0.5f) * 0.5f;  // Slight horizontal drift
     particles[i].vy = ((float)(rand() % 100) / 100.0f + 0.3f) * 1.2f;  // Downward (positive Y, gravity)
-    particles[i].scale = 0.15f + ((float)(rand() % 100) / 100.0f) * 0.25f;
+    particles[i].scale = 0.30f + ((float)(rand() % 100) / 100.0f) * 0.50f;  // 2x bigger: 0.30 to 0.80
     particles[i].rotation = (float)(rand() % 360);
-    particles[i].rotation_speed = ((float)(rand() % 100) / 100.0f - 0.5f) * 2.0f;
+    particles[i].rotation_speed = ((float)(rand() % 100) / 100.0f - 0.5f) * 1.0f;  // Half speed: -0.5 to +0.5
     particles[i].symbol_type = rand() % 4;
 
     // Assign color based on symbol
@@ -674,35 +685,58 @@ void render_console_card(ConsoleCardInfo* console, int x, int y, bool selected) 
   }
 }
 
+/// Update console card cache to prevent flickering during discovery updates
+void update_console_card_cache(bool force_update) {
+  uint64_t current_time = sceKernelGetProcessTimeWide();
+
+  // Only update cache if enough time has passed or if forced
+  if (!force_update &&
+      (current_time - card_cache.last_update_time) < CARD_CACHE_UPDATE_INTERVAL_US) {
+    return;
+  }
+
+  // Count current valid hosts
+  int num_hosts = 0;
+  ConsoleCardInfo temp_cards[MAX_NUM_HOSTS];
+
+  for (int i = 0; i < MAX_NUM_HOSTS; i++) {
+    if (context.hosts[i]) {
+      map_host_to_console_card(context.hosts[i], &temp_cards[num_hosts]);
+      num_hosts++;
+    }
+  }
+
+  // Only update cache if we have valid hosts (prevents storing empty state during discovery updates)
+  if (num_hosts > 0) {
+    card_cache.num_cards = num_hosts;
+    memcpy(card_cache.cards, temp_cards, sizeof(ConsoleCardInfo) * num_hosts);
+    card_cache.last_update_time = current_time;
+  }
+}
+
 /// Render console cards in grid layout
 void render_console_grid() {
   int screen_center_x = VITA_WIDTH / 2;
   int content_area_x = WAVE_NAV_WIDTH + ((VITA_WIDTH - WAVE_NAV_WIDTH) / 2);
 
-  // Header text
-  vita2d_font_draw_text(font, content_area_x - 150, 100, UI_COLOR_TEXT_PRIMARY, 24,
-    "Which do you want to connect?");
+  // Header text - properly centered
+  const char* header_text = "Which do you want to connect?";
+  int text_width = vita2d_font_text_width(font, 24, header_text);
+  int text_x = content_area_x - (text_width / 2);  // Center the text
+  vita2d_font_draw_text(font, text_x, 100, UI_COLOR_TEXT_PRIMARY, 24, header_text);
 
-  int num_hosts = 0;
-  ConsoleCardInfo cards[MAX_NUM_HOSTS];
+  // Update cache (respects 10-second interval)
+  update_console_card_cache(false);
 
-  // Map all vitaki hosts to console cards
-  for (int i = 0; i < MAX_NUM_HOSTS; i++) {
-    if (context.hosts[i]) {
-      map_host_to_console_card(context.hosts[i], &cards[num_hosts]);
-      num_hosts++;
-    }
-  }
-
-  // Render console cards (if any exist)
-  if (num_hosts > 0) {
-    for (int i = 0; i < num_hosts; i++) {
+  // Use cached cards to prevent flickering
+  if (card_cache.num_cards > 0) {
+    for (int i = 0; i < card_cache.num_cards; i++) {
       int card_x = content_area_x - (CONSOLE_CARD_WIDTH / 2);
       int card_y = CONSOLE_CARD_START_Y + (i * CONSOLE_CARD_SPACING);
 
       // Only show selection highlight if console cards have focus
       bool selected = (i == selected_console_index && current_focus == FOCUS_CONSOLE_CARDS);
-      render_console_card(&cards[i], card_x, card_y, selected);
+      render_console_card(&card_cache.cards[i], card_x, card_y, selected);
     }
   }
 }
