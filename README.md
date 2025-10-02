@@ -1,8 +1,28 @@
-# VitaRPS5 (Vitaki Fork)
+<div align="center">
+  <img src="vita/res/icon0.png" alt="VitaRPS5 Icon" width="150"/>
+
+  # VitaRPS5 (Vitaki Fork)
+
+  **PlayStation 5 Remote Play for PS Vita**
+
+  [![License](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
+  [![Build Status](https://img.shields.io/github/actions/workflow/status/mauricio-gg/vitaki-fork/release.yml?branch=main)](https://github.com/mauricio-gg/vitaki-fork/actions)
+  [![Latest Release](https://img.shields.io/github/v/release/mauricio-gg/vitaki-fork)](https://github.com/mauricio-gg/vitaki-fork/releases/latest)
+</div>
+
+---
 
 This is a fork built on top of [@ywnico](https://github.com/ywnico)'s excellent [vitaki-fork](https://github.com/ywnico/vitaki-fork), which itself is based on [@AAGaming00](https://github.com/AAGaming00)'s [Vitaki](https://git.catvibers.me/aa/chiaki).
 
 **Credit where it's due:** ywnico did the vast majority of the hard work, implementing audio, controls, external network support, wakeup functionality, and numerous critical fixes. AAGaming did the foundational work of porting Chiaki to PS Vita. This fork simply adds UI enhancements and quality-of-life improvements on top of their solid foundation.
+
+## Screenshots
+
+<div align="center">
+  <img src="screenshots/main.png" alt="Main Screen" width="45%"/>
+  <img src="screenshots/Settings.png" alt="Settings Screen" width="45%"/>
+  <img src="screenshots/Controller.png" alt="Controller Mapping" width="45%"/>
+</div>
 
 ## Support This Project
 
