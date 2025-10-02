@@ -179,13 +179,6 @@ void vita_audio_cb(int16_t *buf_in, size_t samples_count, void *user) {
 
                 audio_catchup_count++;
 
-                // Log warning if catchup happens frequently (>1% of frames)
-                if (audio_catchup_count % 100 == 1) {
-                    float catchup_rate = (float)audio_catchup_count / (float)audio_frames_processed * 100.0f;
-                    LOGD("VITA AUDIO :: Buffer catchup rate: %.2f%% (%lu catchups in %lu frames)",
-                         catchup_rate, audio_catchup_count, audio_frames_processed);
-                }
-
                 LOGD("VITA AUDIO :: audio catchup: [before] write_read_framediff %d, write_frame_offset %d, device_buffer_offset %d (read frame offset %d)", write_read_framediff, write_frame_offset, device_buffer_offset, device_buffer_offset*device_buffer_frames);
 
                 device_buffer_offset = device_buffer_from_frame( ((int) write_frame_offset) - 1 );
