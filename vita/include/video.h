@@ -29,9 +29,9 @@
 #define VITA_DECODER_RESOLUTION_LOWER_BOUND(x)  ((x) < 64 ? 64 : (x))
 #define VITA_DECODER_RESOLUTION(x)              (VITA_DECODER_RESOLUTION_LOWER_BOUND(ROUND_NEAREST_16(x)))
 // Reference frames for H.264 decoder
-// Reducing this lowers latency but can cause decoder issues
-// 5 is a safe balance between latency and stability
-#define REF_FRAMES 5
+// Original value: 8 (stable, tested)
+// Lower values cause decoder freeze/corruption with PS5 streams
+#define REF_FRAMES 8
 
 void vita_h264_start();
 void vita_h264_stop();
