@@ -120,31 +120,12 @@ static void event_cb(ChiakiEvent *event, void *user) {
 
 static bool video_cb(uint8_t *buf, size_t buf_size, void *user) {
   static bool first_frame = true;
-  static uint64_t video_frame_count = 0;
-
-  uint64_t receive_time_us = sceKernelGetProcessTimeWide();
-
   if (first_frame) {
     LOGD("VIDEO CALLBACK: First frame received (size=%zu)", buf_size);
     first_frame = false;
   }
-
   context.stream.is_streaming = true;
-
   int err = vita_h264_decode_frame(buf, buf_size);
-
-  uint64_t decode_done_us = sceKernelGetProcessTimeWide();
-
-  // Log video decode latency every 150 frames (~5 seconds at 30fps)
-  video_frame_count++;
-  if (video_frame_count % 150 == 0) {
-    uint64_t decode_time_us = decode_done_us - receive_time_us;
-    LOGD("VIDEO LATENCY: Frame %lu, Decode time %lu us (%.2f ms)",
-         (unsigned long)video_frame_count,
-         (unsigned long)decode_time_us,
-         decode_time_us / 1000.0f);
-  }
-
   if (err != 0) {
 		LOGE("Error during video decode: %d", err);
     return false;
