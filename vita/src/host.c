@@ -169,8 +169,11 @@ void set_ctrl_r2pos(VitaChiakiStream *stream, VitakiCtrlIn ctrl_in) {
 
 static void *input_thread_func(void* user) {
   // Set input thread to highest priority for lowest input lag
-  sceKernelChangeThreadPriority(SCE_KERNEL_THREAD_ID_SELF, 96);
-  sceKernelChangeThreadCpuAffinityMask(SCE_KERNEL_THREAD_ID_SELF, SCE_KERNEL_CPU_MASK_USER_1);
+  // Note: Using CPU 0 same as video/audio to avoid scheduling issues
+  // Priority 96 is higher than video (64) so input takes precedence
+  int prio_ret = sceKernelChangeThreadPriority(SCE_KERNEL_THREAD_ID_SELF, 96);
+  int affin_ret = sceKernelChangeThreadCpuAffinityMask(SCE_KERNEL_THREAD_ID_SELF, 0);
+  LOGD("INPUT THREAD: Started with priority 96 (ret=%d) on CPU 0 (ret=%d)", prio_ret, affin_ret);
 
   sceMotionStartSampling();
   sceCtrlSetSamplingMode(SCE_CTRL_MODE_ANALOG_WIDE);
@@ -208,6 +211,7 @@ static void *input_thread_func(void* user) {
   bool vitaki_right_circle_mapped = (vcmi.in_out_btn[VITAKI_CTRL_IN_RIGHT_CIRCLE] != 0) || (vcmi.in_r2 == VITAKI_CTRL_IN_RIGHT_CIRCLE);
 
   static int wait_count = 0;
+  static uint64_t input_loop_count = 0;
   while (true) {
 
     // TODO enable using triggers as L2, R2
@@ -219,6 +223,14 @@ static void *input_thread_func(void* user) {
         LOGD("INPUT THREAD: is_streaming became true after %d loops", wait_count);
         wait_count = 0;
       }
+
+      input_loop_count++;
+      // Log every 10 seconds (2ms polling = 500Hz, 5000 loops = 10 sec)
+      if (input_loop_count % 5000 == 0) {
+        LOGD("INPUT THREAD: Still running (%lu loops, ~%lu seconds)",
+             input_loop_count, input_loop_count / 500);
+      }
+
       int start_time_us = sceKernelGetProcessTimeWide();
 
       // get button state
