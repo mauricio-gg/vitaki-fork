@@ -28,7 +28,10 @@
 #define ROUND_NEAREST_16(x)                     (round(((double) (x)) / 16) * 16)
 #define VITA_DECODER_RESOLUTION_LOWER_BOUND(x)  ((x) < 64 ? 64 : (x))
 #define VITA_DECODER_RESOLUTION(x)              (VITA_DECODER_RESOLUTION_LOWER_BOUND(ROUND_NEAREST_16(x)))
-#define REF_FRAMES 8
+// Reduced from 8 to 3 for lower latency
+// Reference frames add decoder buffering delay
+// 3 is minimum for decent quality with H.264 streaming
+#define REF_FRAMES 3
 
 void vita_h264_start();
 void vita_h264_stop();

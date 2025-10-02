@@ -120,12 +120,31 @@ static void event_cb(ChiakiEvent *event, void *user) {
 
 static bool video_cb(uint8_t *buf, size_t buf_size, void *user) {
   static bool first_frame = true;
+  static uint64_t video_frame_count = 0;
+
+  uint64_t receive_time_us = sceKernelGetProcessTimeWide();
+
   if (first_frame) {
     LOGD("VIDEO CALLBACK: First frame received (size=%zu)", buf_size);
     first_frame = false;
   }
+
   context.stream.is_streaming = true;
+
   int err = vita_h264_decode_frame(buf, buf_size);
+
+  uint64_t decode_done_us = sceKernelGetProcessTimeWide();
+
+  // Log video decode latency every 150 frames (~5 seconds at 30fps)
+  video_frame_count++;
+  if (video_frame_count % 150 == 0) {
+    uint64_t decode_time_us = decode_done_us - receive_time_us;
+    LOGD("VIDEO LATENCY: Frame %lu, Decode time %lu us (%.2f ms)",
+         (unsigned long)video_frame_count,
+         (unsigned long)decode_time_us,
+         decode_time_us / 1000.0f);
+  }
+
   if (err != 0) {
 		LOGE("Error during video decode: %d", err);
     return false;
@@ -370,7 +389,20 @@ static void *input_thread_func(void* user) {
         }
       }
 
+      uint64_t before_send_us = sceKernelGetProcessTimeWide();
       chiaki_session_set_controller_state(&stream->session, &stream->controller_state);
+      uint64_t after_send_us = sceKernelGetProcessTimeWide();
+
+      // Log input latency every 5 seconds for performance analysis
+      static uint64_t input_latency_log_count = 0;
+      input_latency_log_count++;
+      if (input_latency_log_count % 2500 == 0) {
+        uint64_t input_to_send_us = after_send_us - start_time_us;
+        uint64_t send_overhead_us = after_send_us - before_send_us;
+        LOGD("INPUT LATENCY: Total %lu us, Send %lu us",
+             (unsigned long)input_to_send_us, (unsigned long)send_overhead_us);
+      }
+
       // LOGD("ly 0x%x %d", ctrl.ly, ctrl.ly);
 
       // Adjust sleep time to account for calculations above
